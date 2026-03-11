@@ -1,0 +1,9 @@
+Flask
+Flask-MQTT
+python-dotenv
+requests
+numpy
+pandas
+scikit-learn
+joblib
+shap

@@ -1,0 +1,34 @@
+# --- Python & App ---
+__pycache__/
+*.py[cod]
+venv/
+.env
+.cache/
+.local/
+
+# --- Datenbank & Modelle ---
+# Wir ignorieren die Datenbank und das ML-Modell
+*.db
+*.sqlite3
+*.pkl
+
+# --- Logs & Temporäres ---
+*.log
+.sudo_as_admin_successful
+
+# --- Systemdateien (Bash & SSH) ---
+# Diese Dateien gehören zu deinem Server-User, nicht zum Projekt!
+.bash_history
+.bash_logout
+.bashrc
+.profile
+.ssh/
+.git
+.github
+.gitignore
+.dockerignore
+.gitconfig
+
+# --- OS spezifisch ---
+.DS_Store
+Thumbs.db
