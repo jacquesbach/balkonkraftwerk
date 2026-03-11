@@ -22,14 +22,13 @@ jobs:
             
             # 2. Alte Instanz finden und beenden (kill), falls sie läuft
             # Wir suchen nach dem Prozess "app.py" und beenden ihn freundlich
-            pkill -f "python3 app.py" || echo "Keine laufende App gefunden."
-            sudo kill -f app.py || echo "Keine laufende App gefunden."
-            sudo kill -f app.py || echo "Keine laufende App gefunden."
+            sudo pkill -f app.py
+            sudo pkill -f app.py
             
             # 3. Kurz warten, damit Ports frei werden
             sleep 2
             
             # 4. App mit nohup neu starten
-            nohup python3 app.py > app.log 2>&1 &
+            nohup python3 app.py > app.log 2>&1 & disown
             
             echo "Deployment erfolgreich abgeschlossen und App neu gestartet."
