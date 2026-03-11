@@ -26,6 +26,7 @@ venv/
 
 # --- Git spezifisch ---
 .gitconfig
+.git-credentials
 
 # --- OS spezifisch ---
 .DS_Store
