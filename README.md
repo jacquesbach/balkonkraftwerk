@@ -1,7 +1,6 @@
-# Balkonkraftwerk Analytics
+# Balkonkraftwerk Analytics Dashboard
 
 Ein intelligentes Monitoring-System für Balkonkraftwerke. Es kombiniert Echtzeit-Daten via MQTT mit Wettervorhersagen von Open-Meteo, um mittels Machine Learning den Ertrag der nächsten Tage vorherzusagen.
-
 
 
 ## 🚀 Features
@@ -136,19 +135,32 @@ sudo systemctl enable --now balkonkraftwerk
 sudo systemctl enable --now balkonkraftwerk-staging
 ```
 
-### ⚠️ Wichtig: GitHub Actions konfigurieren
-Damit das automatische Deployment funktioniert, müssen die Pfade in deinen `.github/workflows/*.yml` Dateien mit der Serverstruktur übereinstimmen:
+### ⚠️ Wichtig: GitHub Actions & CI/CD Setup
 
-* **deploy-staging.yml:** Muss auf das Verzeichnis `/home/ubuntu/balkonkraftwerk-staging` zeigen.
-* **deploy.yml:** Muss auf das Verzeichnis `/home/ubuntu/balkonkraftwerk` zeigen.
+Damit das automatische Deployment funktioniert, müssen zwei Dinge konfiguriert sein:
 
-Stelle sicher, dass dein SSH-User Schreibrechte für beide Verzeichnisse besitzt.
+#### 1. Pfade in den Workflows
+Stelle sicher, dass die Zielverzeichnisse in deinen `.github/workflows/*.yml` Dateien exakt mit der Serverstruktur übereinstimmen:
+* **deploy-staging.yml:** Zielpfad `/home/ubuntu/balkonkraftwerk-staging`
+* **deploy.yml:** Zielpfad `/home/ubuntu/balkonkraftwerk`
+
+#### 2. GitHub Secrets
+Hinterlege in deinem GitHub-Repository unter `Settings > Secrets and variables > Actions` folgende Secrets, damit die Action auf deinen Server zugreifen kann:
+
+| Secret Name | Beschreibung |
+| :--- | :--- |
+| `SERVER_IP` | Die IP-Adresse deines Ubuntu-Servers |
+| `SERVER_USER` | Dein Benutzername (z. B. `ubuntu`) |
+| `SSH_PRIVATE_KEY` | Dein privater SSH-Schlüssel (für den passwortlosen Login) |
+
+---
 
 ## 🧪 Entwicklung & Staging
 Das Projekt nutzt einen automatisierten **Staging-Workflow** via GitHub Actions:
-* **Entwicklung:** Änderungen werden in den `dev` Branch gepusht. Die GitHub Action führt einen Deploy auf dem Server im Verzeichnis `/home/ubuntu/balkonkraftwerk-staging` aus.
-* **Vorschau:** Änderungen sind sofort unter `http://deine-ip:5001` sichtbar.
-* **Production:** Nach einem erfolgreichen Merge von `dev` in den `main` Branch aktualisiert die Action das Verzeichnis `/home/ubuntu/balkonkraftwerk` und startet den Live-Dienst neu.
+
+1. **Entwicklung:** Änderungen werden in den `dev` Branch gepusht. Die GitHub Action führt einen Deploy auf dem Server im Verzeichnis `/home/ubuntu/balkonkraftwerk-staging` aus.
+2. **Vorschau:** Änderungen sind sofort unter `http://deine-ip:5001` sichtbar.
+3. **Production:** Nach einem erfolgreichen Merge von `dev` in den `main` Branch aktualisiert die Action das Live-Verzeichnis und startet den Dienst `balkonkraftwerk.service` neu.
 
 **Staging-URL:** `http://deine-ip:5001`  
 **Live-URL:** `http://deine-ip:5000`
