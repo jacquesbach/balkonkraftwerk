@@ -1133,7 +1133,7 @@ function showShapDetails(point) {
        daylight: "Tageslichtdauer",
        sunshine: "Sonnenscheindauer"
    };
-
+   // Test Änderung Main Branch
    const container = document.getElementById("shapForcePlot");
 
    // ===== ResizeObserver nur einmal registrieren =====
