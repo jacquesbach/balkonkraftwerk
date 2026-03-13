@@ -217,7 +217,7 @@ def self_heal_daily_stats():
 def force_rebuild_daily_stats():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    print("🔥 Starte kompletten Neuaufbau von daily_stats...")
+    print("Starte kompletten Neuaufbau von daily_stats...")
     
     # daily_stats komplett leeren
     c.execute("DELETE FROM daily_stats")
@@ -235,4 +235,4 @@ def force_rebuild_daily_stats():
     # Für jeden Tag neu berechnen
     for d in days:
         finalize_day(d)
-    print(f"✅ Rebuild abgeschlossen. {len(days)} Tage neu berechnet.")
+    print(f"Rebuild abgeschlossen. {len(days)} Tage neu berechnet.")
