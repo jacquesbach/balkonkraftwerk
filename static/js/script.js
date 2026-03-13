@@ -845,7 +845,9 @@ function prettyFeatureName(key) {
        sun_elevation: "Sonnenstand zur Mittagszeit",
        month_sin: "Monatliche Saisonkomponente",
        sin_day: "Saisonale Phase (Sinus)",
-       cos_day: "Saisonale Phase (Cosinus)"
+       cos_day: "Saisonale Phase (Cosinus)",
+       daylight: "Tageslichtdauer in Sekunden",
+       sunshine: "Sonnenscheindauer in Sekunden"
    };
    return featureNames[key] || key;
 }
