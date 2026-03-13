@@ -16,37 +16,16 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split
 import shap
 from flask_mqtt import Mqtt
+from config import (DB_FILE, ADMIN_PASS, LATITUDE, LONGITUDE, MODEL_FILE, MQTT_CONFIG, TRAPEZOID_SQL, GAP_THRESHOLD)
+from utils import (calculate_eur, calculate_sun_elevation, get_historical_avg_temp, get_weather_forecast, trapezoid_wh)
 
 os.environ['TZ'] = 'Europe/Berlin'
 time.tzset()
 load_dotenv()
 
 app = Flask(__name__, template_folder='.')
+app.config.update(MQTT_CONFIG)
 loading_status = {"loading": False}
-
-# ================= KONFIGURATION =================
-DB_FILE = "solar_data.db"
-ADMIN_PASS = os.getenv("ADMIN_PASS")
-LATITUDE = float(os.getenv("LATITUDE", 0.0))
-LONGITUDE = float(os.getenv("LONGITUDE", 0.0))
-GAP_THRESHOLD = 45  # 3 x 15 Sekunden Logging
-MODEL_FILE = "pv_model.pkl"
-app.config['MQTT_BROKER_URL'] = os.getenv("MQTT_BROKER_URL")
-app.config['MQTT_BROKER_PORT'] = int(os.getenv("MQTT_BROKER_PORT", 1883))
-app.config['MQTT_USERNAME'] = os.getenv("MQTT_USERNAME")
-app.config['MQTT_PASSWORD'] = os.getenv("MQTT_PASSWORD")
-app.config['MQTT_TLS_ENABLED'] = False
-
-TRAPEZOID_SQL = f"""
-CASE
-    WHEN prev_t IS NOT NULL
-         AND dt > 0
-         AND dt <= {GAP_THRESHOLD}
-    THEN ((prev_w + w) / 2.0) * (dt / 3600.0)
-    ELSE 0
-END
-"""
-# =================================================
 
 mqtt = Mqtt(app)
 
@@ -332,60 +311,6 @@ def self_heal_daily_stats():
             finalize_day(day)
         print("Self-Heal abgeschlossen.")
 
-def trapezoid_wh(prev_w, w, dt):
-    if prev_w is None or dt is None:
-        return 0.0
-    if 0 < dt <= GAP_THRESHOLD:
-        return ((prev_w + w) / 2.0) * (dt / 3600.0)
-    return 0.0
-
-def calculate_eur(kwh, date_str, prices):
-    """
-    Einheitliche Euro-Berechnung mit hoher Präzision.
-    Rundung immer auf 6 Nachkommastellen.
-    """
-    for p in prices:
-        if date_str >= p["date"]:
-            return round(kwh * p["price"], 6)
-    return round(kwh * 0.329, 6)
-
-def calculate_sun_elevation(date):
-    day_of_year = date.timetuple().tm_yday
-
-    # vereinfachtes astronomisches Modell
-    decl = -23.44 * math.cos(math.radians((360/365) * (day_of_year + 10)))
-
-    elevation = 90 - abs(LATITUDE - decl)
-
-    return max(elevation, 0)
-
-def get_historical_avg_temp(day):
-    """
-    Holt Tagesmitteltemperatur von OpenMeteo Historical API.
-    """
-    try:
-        url = (
-            f"https://archive-api.open-meteo.com/v1/archive"
-            f"?latitude={LATITUDE}"
-            f"&longitude={LONGITUDE}"
-            f"&start_date={day}"
-            f"&end_date={day}"
-            f"&daily=temperature_2m_mean"
-            f"&timezone=Europe/Berlin"
-        )
-
-        r = requests.get(url, timeout=5)
-        data = r.json().get("daily", {})
-        temps = data.get("temperature_2m_mean", [])
-
-        if temps:
-            return float(temps[0])
-
-    except Exception as e:
-        print("Historical Temp Error:", e)
-
-    return 0.0
-
 def build_training_data():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -506,29 +431,6 @@ def load_or_train_model():
         return joblib.load(MODEL_FILE)
     train_model()
     return joblib.load(MODEL_FILE)
-
-def get_weather_forecast(days=7):
-    try:
-        url = (
-            f"https://api.open-meteo.com/v1/forecast"
-            f"?latitude={LATITUDE}"
-            f"&longitude={LONGITUDE}"
-            f"&daily=cloud_cover_mean,temperature_2m_mean"
-            f"&timezone=Europe/Berlin"
-        )
-
-        r = requests.get(url, timeout=5)
-        data = r.json().get("daily", {})
-
-        dates = data.get("time", [])
-        clouds = data.get("cloud_cover_mean", [])
-        temps = data.get("temperature_2m_mean", [])
-
-        return list(zip(dates[:days], clouds[:days], temps[:days]))
-
-    except Exception as e:
-        print("Forecast Weather Error:", e)
-        return []
 
 @app.route('/')
 def index():
