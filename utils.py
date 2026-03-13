@@ -28,9 +28,10 @@ def calculate_sun_elevation(date):
     elevation = 90 - abs(LATITUDE - decl)
     return max(elevation, 0)
 
-def get_historical_avg_temp(day):
+def get_historical_weather_data(day):
     """
-    Holt Tagesmitteltemperatur von OpenMeteo Historical API.
+    Holt Wetterdaten (Temp, Daylight, Sunshine) von OpenMeteo Historical API.
+    Einheiten: Temp (°C), Daylight/Sunshine (Sekunden).
     """
     try:
         url = (
@@ -39,17 +40,25 @@ def get_historical_avg_temp(day):
             f"&longitude={LONGITUDE}"
             f"&start_date={day}"
             f"&end_date={day}"
-            f"&daily=temperature_2m_mean"
+            f"&daily=temperature_2m_mean,daylight_duration,sunshine_duration"
             f"&timezone=Europe/Berlin"
         )
         r = requests.get(url, timeout=5)
         data = r.json().get("daily", {})
-        temps = data.get("temperature_2m_mean", [])
-        if temps:
-            return float(temps[0])
+
+        # Extraktion mit Fallback auf 0.0
+        temp = data.get("temperature_2m_mean", [0.0])[0]
+        daylight = data.get("daylight_duration", [0.0])[0]
+        sunshine = data.get("sunshine_duration", [0.0])[0]
+
+        return {
+            "temp": float(temp) if temp is not None else 0.0,
+            "daylight_duration": float(daylight) if daylight is not None else 0.0,
+            "sunshine_duration": float(sunshine) if sunshine is not None else 0.0
+        }
     except Exception as e:
-        print("Historical Temp Error:", e)
-    return 0.0
+        print(f"Historical Weather Error ({day}):", e)
+        return {"temp": 0.0, "daylight_duration": 0.0, "sunshine_duration": 0.0}
 
 def get_weather_forecast(days=7):
     """Holt die Wettervorhersage für die nächsten Tage."""

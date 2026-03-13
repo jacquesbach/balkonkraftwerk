@@ -1,7 +1,7 @@
 import sqlite3
 import datetime
 from config import DB_FILE, TRAPEZOID_SQL
-from utils import get_historical_avg_temp, calculate_eur
+from utils import get_historical_weather_data, calculate_eur
 
 def get_db_connection(timeout=None):
     """Hilfsfunktion für eine saubere DB-Verbindung."""
@@ -43,6 +43,8 @@ def init_db():
             avg_clouds REAL,
             max_w REAL,
             avg_temp REAL,
+            daylight_duration REAL,
+            sunshine_duration REAL,
             max_w_panel1 REAL,
             max_w_panel2 REAL,
             kwh_panel1 REAL,
@@ -50,6 +52,24 @@ def init_db():
             kwh_dc_total REAL
         )
     ''')
+
+    # 2. AUTOMATISCHES UPGRADE für neue Spalten
+    c.execute("PRAGMA table_info(daily_stats)")
+    existing_columns = [col[1] for col in c.fetchall()]
+
+    if "daylight_duration" not in existing_columns:
+        print("Migriere Datenbank: Spalte daylight_duration wird hinzugefügt...")
+        c.execute("ALTER TABLE daily_stats ADD COLUMN daylight_duration REAL")
+    
+    if "sunshine_duration" not in existing_columns:
+        print("Migriere Datenbank: Spalte sunshine_duration wird hinzugefügt...")
+        c.execute("ALTER TABLE daily_stats ADD COLUMN sunshine_duration REAL")
+
+    # 3. Restliche Spalten (max_w_panel1, etc.) sicherstellen
+    # Falls du die auch noch nicht hast, kannst du das Muster einfach fortsetzen:
+    for col in ["max_w_panel1", "max_w_panel2", "kwh_panel1", "kwh_panel2", "kwh_dc_total"]:
+        if col not in existing_columns:
+            c.execute(f"ALTER TABLE daily_stats ADD COLUMN {col} REAL")
     
     # 3. Globale Gesamt-Statistiken
     c.execute('''
@@ -134,7 +154,10 @@ def finalize_day(day):
         wh_p1 = float(row[5]) if row[5] is not None else 0.0
         wh_p2 = float(row[6]) if row[6] is not None else 0.0
         wh_dc = float(row[7]) if row[7] is not None else 0.0
-        avg_temp = get_historical_avg_temp(day)
+        weather = get_historical_weather_data(day)
+        avg_temp = weather["temp"]
+        daylight_s = weather["daylight_duration"]
+        sunshine_s = weather["sunshine_duration"]
 
         kwh = total_wh / 1000.0
         kwh_p1 = wh_p1 / 1000.0
@@ -168,14 +191,16 @@ def finalize_day(day):
 
         c.execute("""
             INSERT OR REPLACE INTO daily_stats 
-            (day, kwh, eur, avg_clouds, avg_temp, max_w, max_w_panel1, max_w_panel2, kwh_panel1, kwh_panel2, kwh_dc_total)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (day, kwh, eur, avg_clouds, avg_temp, daylight_duration, sunshine_duration, max_w, max_w_panel1, max_w_panel2, kwh_panel1, kwh_panel2, kwh_dc_total)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             day,
             kwh_db,
             eur_db,
             round(avg_clouds, 2),
             round(avg_temp, 2),
+            round(daylight_s, 1),
+            round(sunshine_s, 1), # In Sekunden
             round(max_w, 1),
             round(max_w_p1, 1),
             round(max_w_p2, 1),

@@ -1043,12 +1043,3 @@ def shap_summary():
     ]
 
     return jsonify(sorted(result, key=lambda x: x["mean_abs_shap"], reverse=True))
-
-
-
-
-
-
-
-# ... (Kopiere hier die restlichen Routen wie /api/data, /api/roi, /api/heatmap etc. hinein)
-# Ersetze dabei immer @app.route durch @api_bp.route
