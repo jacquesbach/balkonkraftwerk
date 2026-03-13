@@ -808,8 +808,8 @@ def forecast():
     c.execute("SELECT valid_from, price FROM prices ORDER BY valid_from DESC")
     prices = [{"date": r[0], "price": r[1]} for r in c.fetchall()]
     conn.close()
-
-    for date_str, cloud, temp in forecast_data:
+    
+    for date_str, cloud, temp, daylight, sunshine in forecast_data:
 
         date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
         doy = date.timetuple().tm_yday
@@ -820,13 +820,18 @@ def forecast():
 
         prev_kwh = last_rows[-1] if last_rows else 0
         rolling_avg = sum(last_rows[-7:]) / 7 if len(last_rows) >= 7 else prev_kwh
-
-        X = np.array([[sin_day, cos_day,
-                       cloud or 0,
-                       temp or 0,
-                       sun_elev,
-                       prev_kwh,
-                       rolling_avg]])
+        
+        X = np.array([[
+            sin_day, 
+            cos_day, 
+            cloud or 0, 
+            temp or 0, 
+            sun_elev, 
+            prev_kwh, 
+            rolling_avg,
+            daylight or 0,
+            sunshine or 0
+        ]])
 
         median = max(float(model.predict(X)[0]), 0)
         lower = max(float(model_low.predict(X)[0]), 0)
@@ -927,16 +932,8 @@ def feature_importance():
 
     model_bundle = load_or_train_model()
     model = model_bundle["model"]
-
-    feature_names = [
-        "sin_day",
-        "cos_day",
-        "clouds",
-        "temperature",
-        "sun_elevation",
-        "prev_kwh",
-        "rolling_avg"
-    ]
+    
+    feature_names = model_bundle["feature_names"]
 
     importances = model.feature_importances_
 
@@ -975,7 +972,7 @@ def shap_values():
 
     results = []
 
-    for date_str, cloud, temp in forecast_data:
+    for date_str, cloud, temp, daylight, sunshine in forecast_data:
 
         date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
         doy = date.timetuple().tm_yday
@@ -987,9 +984,19 @@ def shap_values():
         
         prev_kwh = last_rows[-1] if last_rows else 0
         rolling_avg = sum(last_rows[-7:]) / 7 if len(last_rows) >= 7 else prev_kwh
-        
-        X = np.array([[sin_day, cos_day, cloud or 0, temp or 0, sun_elev, prev_kwh, rolling_avg]])
-        
+
+        X = np.array([[
+            sin_day, 
+            cos_day, 
+            cloud or 0, 
+            temp or 0, 
+            sun_elev, 
+            prev_kwh, 
+            rolling_avg,
+            daylight or 0,
+            sunshine or 0
+        ]])
+
         prediction = float(model.predict(X)[0])
         
         shap_vals = explainer.shap_values(X)[0]
@@ -1011,7 +1018,6 @@ def shap_values():
         })
 
     return jsonify(results)
-
 
 @api_bp.route('/api/shap-summary')
 def shap_summary():

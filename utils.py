@@ -67,15 +67,22 @@ def get_weather_forecast(days=7):
             f"https://api.open-meteo.com/v1/forecast"
             f"?latitude={LATITUDE}"
             f"&longitude={LONGITUDE}"
-            f"&daily=cloud_cover_mean,temperature_2m_mean"
+            f"&daily=cloud_cover_mean,temperature_2m_mean,daylight_duration,sunshine_duration"
             f"&timezone=Europe/Berlin"
+            f"&forecast_days={days}"
         )
         r = requests.get(url, timeout=5)
         data = r.json().get("daily", {})
+        
         dates = data.get("time", [])
         clouds = data.get("cloud_cover_mean", [])
         temps = data.get("temperature_2m_mean", [])
-        return list(zip(dates[:days], clouds[:days], temps[:days]))
+        daylight = data.get("daylight_duration", [])
+        sunshine = data.get("sunshine_duration", [])
+        
+        # Wir geben nun 5 Werte pro Tag zurück
+        return list(zip(dates, clouds, temps, daylight, sunshine))
+        
     except Exception as e:
         print("Forecast Weather Error:", e)
         return []

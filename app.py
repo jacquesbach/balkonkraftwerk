@@ -25,7 +25,7 @@ if __name__ == '__main__':
     init_db()
 
     # 🔥 EINMAL ausführen, danach wieder auskommentieren!
-    force_rebuild_daily_stats()
+    # force_rebuild_daily_stats()
 
     self_heal_daily_stats()
     
