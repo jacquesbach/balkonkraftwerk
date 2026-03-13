@@ -52,24 +52,6 @@ def init_db():
             kwh_dc_total REAL
         )
     ''')
-
-    # 2. AUTOMATISCHES UPGRADE für neue Spalten
-    c.execute("PRAGMA table_info(daily_stats)")
-    existing_columns = [col[1] for col in c.fetchall()]
-
-    if "daylight_duration" not in existing_columns:
-        print("Migriere Datenbank: Spalte daylight_duration wird hinzugefügt...")
-        c.execute("ALTER TABLE daily_stats ADD COLUMN daylight_duration REAL")
-    
-    if "sunshine_duration" not in existing_columns:
-        print("Migriere Datenbank: Spalte sunshine_duration wird hinzugefügt...")
-        c.execute("ALTER TABLE daily_stats ADD COLUMN sunshine_duration REAL")
-
-    # 3. Restliche Spalten (max_w_panel1, etc.) sicherstellen
-    # Falls du die auch noch nicht hast, kannst du das Muster einfach fortsetzen:
-    for col in ["max_w_panel1", "max_w_panel2", "kwh_panel1", "kwh_panel2", "kwh_dc_total"]:
-        if col not in existing_columns:
-            c.execute(f"ALTER TABLE daily_stats ADD COLUMN {col} REAL")
     
     # 3. Globale Gesamt-Statistiken
     c.execute('''
