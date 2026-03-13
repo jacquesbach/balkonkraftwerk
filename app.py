@@ -10,14 +10,13 @@ import math
 import numpy as np
 import joblib
 import pandas as pd
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.base import clone
-from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import train_test_split
 import shap
 from flask_mqtt import Mqtt
 from config import (DB_FILE, ADMIN_PASS, LATITUDE, LONGITUDE, MODEL_FILE, MQTT_CONFIG, TRAPEZOID_SQL, GAP_THRESHOLD)
 from utils import (calculate_eur, calculate_sun_elevation, get_historical_avg_temp, get_weather_forecast, trapezoid_wh)
+from database import get_db_connection, init_db, finalize_day, force_rebuild_daily_stats, self_heal_daily_stats
+from ml_logic import load_or_train_model, build_training_data, train_model
+
 
 os.environ['TZ'] = 'Europe/Berlin'
 time.tzset()
@@ -69,368 +68,6 @@ def handle_mqtt_message(client, userdata, message):
         # Falls mal ein kaputtes JSON kommt, stürzt der Thread nicht ab
         print(f"MQTT Parse Error: {e}")
 
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    # 1. Haupttabelle für Rohdaten
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS data (
-            t TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            w REAL,
-            a REAL,
-            v REAL,
-            clouds REAL,
-            ac_power_w REAL,
-            dc_power_w REAL,
-            panel1_w REAL,
-            panel2_w REAL,
-            inverter_temp_c REAL
-        )
-    ''')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_data_t ON data(t)')
-    
-    # 2. Tabelle für aggregierte Tagesstatistiken
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS daily_stats (
-            day TEXT PRIMARY KEY,
-            kwh REAL,
-            eur REAL,
-            avg_clouds REAL,
-            max_w REAL,
-            avg_temp REAL,
-            max_w_panel1 REAL,
-            max_w_panel2 REAL,
-            kwh_panel1 REAL,
-            kwh_panel2 REAL,
-            kwh_dc_total REAL
-        )
-    ''')
-    
-    # 3. Globale Gesamt-Statistiken
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS stats (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            total_kwh REAL,
-            total_eur REAL
-        )
-    ''')
-    c.execute("INSERT OR IGNORE INTO stats (id, total_kwh, total_eur) VALUES (1, 0, 0)")
-    
-    # 4. Preis-Tabelle
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS prices (
-            valid_from DATE PRIMARY KEY, 
-            price REAL
-        )
-    ''')
-
-    # Initialen Preis setzen, falls Tabelle leer
-    c.execute("SELECT COUNT(*) FROM prices")
-    if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO prices (valid_from, price) VALUES ('2026-01-01', 0.329)")
-        
-    conn.commit()
-    conn.close()
-    print("Datenbank erfolgreich initialisiert.")
-
-def force_rebuild_daily_stats():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    print("🔥 Starte kompletten Neuaufbau von daily_stats...")
-
-    # 1️⃣ daily_stats komplett leeren
-    c.execute("DELETE FROM daily_stats")
-
-    # 2️⃣ stats sauber zurücksetzen
-    c.execute("""
-        UPDATE stats
-        SET total_kwh = 0,
-            total_eur = 0
-        WHERE id = 1
-    """)
-
-    conn.commit()
-
-    # 3️⃣ Alle Tage aus Rohdaten holen außer heute
-    today = datetime.date.today().strftime("%Y-%m-%d")
-    c.execute("""
-        SELECT DISTINCT date(t)
-        FROM data
-        WHERE date(t) < ?
-    """, (today,))
-    days = [row[0] for row in c.fetchall()]
-
-    conn.close()
-
-    # 4️⃣ Für jeden Tag neu berechnen
-    for d in days:
-        finalize_day(d)
-
-    print(f"✅ Rebuild abgeschlossen. {len(days)} Tage neu berechnet.")
-
-def finalize_day(day):
-    # Heute niemals finalisieren
-    today = datetime.date.today().strftime("%Y-%m-%d")
-    if day >= today:
-        return
-
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    # --- NEU: Trapez-Regel dynamisch für die anderen Spalten klonen ---
-    trap_p1 = TRAPEZOID_SQL.replace("prev_w", "prev_p1").replace("+ w", "+ p1")
-    trap_p2 = TRAPEZOID_SQL.replace("prev_w", "prev_p2").replace("+ w", "+ p2")
-    trap_dc = TRAPEZOID_SQL.replace("prev_w", "prev_dc").replace("+ w", "+ dc")
-
-    c.execute(f"""
-        WITH base AS (
-            SELECT 
-                t,
-                w,
-                panel1_w as p1,
-                panel2_w as p2,
-                dc_power_w as dc,
-                LAG(t) OVER (ORDER BY t) as prev_t,
-                LAG(w) OVER (ORDER BY t) as prev_w,
-                LAG(panel1_w) OVER (ORDER BY t) as prev_p1,
-                LAG(panel2_w) OVER (ORDER BY t) as prev_p2,
-                LAG(dc_power_w) OVER (ORDER BY t) as prev_dc,
-                (strftime('%s', t) - strftime('%s', LAG(t) OVER (ORDER BY t))) as dt,
-                clouds
-            FROM data
-            WHERE date(t) = ?
-        )
-        SELECT
-            SUM({TRAPEZOID_SQL}) as total_wh,
-            AVG(clouds),
-            MAX(w),
-            MAX(p1),
-            MAX(p2),
-            SUM({trap_p1}) as wh_p1,
-            SUM({trap_p2}) as wh_p2,
-            SUM({trap_dc}) as wh_dc
-        FROM base
-    """, (day,))
-
-    row = c.fetchone()
-
-    if row and row[0] is not None:
-
-        total_wh = float(row[0])
-        avg_clouds = float(row[1]) if row[1] is not None else 0.0
-        max_w = float(row[2]) if row[2] is not None else 0.0
-        max_w_p1 = float(row[3]) if row[3] is not None else 0.0
-        max_w_p2 = float(row[4]) if row[4] is not None else 0.0
-        wh_p1 = float(row[5]) if row[5] is not None else 0.0
-        wh_p2 = float(row[6]) if row[6] is not None else 0.0
-        wh_dc = float(row[7]) if row[7] is not None else 0.0
-        avg_temp = get_historical_avg_temp(day)
-
-        kwh = total_wh / 1000.0
-        kwh_p1 = wh_p1 / 1000.0
-        kwh_p2 = wh_p2 / 1000.0
-        kwh_dc = wh_dc / 1000.0
-
-        # Preis sauber aus prices-Tabelle holen
-        c.execute("""
-            SELECT valid_from, price 
-            FROM prices 
-            ORDER BY valid_from DESC
-        """)
-        prices = c.fetchall()
-
-        def get_price_for_date(date_str):
-            for p in prices:
-                if date_str >= p[0]:
-                    return p[1]
-            return 0.35
-
-        price = get_price_for_date(day)
-        prices_list = [{"date": p[0], "price": p[1]} for p in prices]
-        eur = calculate_eur(kwh, day, prices_list)
-
-        # 🔒 Speicherung mit hoher Präzision (DB)
-        kwh_db = round(kwh, 6)
-        eur_db = round(eur, 6)
-        kwh_p1_db = round(kwh_p1, 6)
-        kwh_p2_db = round(kwh_p2, 6)
-        kwh_dc_db = round(kwh_dc, 6)
-
-        c.execute("""
-            INSERT OR REPLACE INTO daily_stats 
-            (day, kwh, eur, avg_clouds, avg_temp, max_w, max_w_panel1, max_w_panel2, kwh_panel1, kwh_panel2, kwh_dc_total)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            day,
-            kwh_db,
-            eur_db,
-            round(avg_clouds, 2),
-            round(avg_temp, 2),
-            round(max_w, 1),
-            round(max_w_p1, 1),
-            round(max_w_p2, 1),
-            kwh_p1_db,
-            kwh_p2_db,
-            kwh_dc_db
-        ))
-
-        conn.commit()
-
-    conn.close()
-    
-    # Modell neu trainieren nach Tagesabschluss
-    train_model()
-
-def self_heal_daily_stats():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    # Alle Tage aus Rohdaten holen außer heute
-    today = datetime.date.today().strftime("%Y-%m-%d")
-    c.execute("""
-        SELECT DISTINCT date(t)
-        FROM data
-        WHERE date(t) < ?
-        ORDER BY date(t)
-    """, (today,))
-    data_days = [row[0] for row in c.fetchall()]
-
-    # Alle Tage aus daily_stats holen
-    c.execute("SELECT day FROM daily_stats")
-    existing_days = {row[0] for row in c.fetchall()}
-
-    conn.close()
-
-    missing_days = [d for d in data_days if d not in existing_days]
-
-    if missing_days:
-        print(f"Self-Heal: {len(missing_days)} fehlende Tage werden berechnet...")
-        for day in missing_days:
-            finalize_day(day)
-        print("Self-Heal abgeschlossen.")
-
-def build_training_data():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT day, kwh, avg_clouds, avg_temp
-        FROM daily_stats
-        WHERE kwh IS NOT NULL
-        ORDER BY day
-    """)
-
-    rows = c.fetchall()
-    conn.close()
-
-    X = []
-    y = []
-
-    kwh_history = []
-
-    for i, (day_str, kwh, clouds, temp) in enumerate(rows):
-
-        date = datetime.datetime.strptime(day_str, "%Y-%m-%d")
-        day_of_year = date.timetuple().tm_yday
-
-        sin_day = math.sin(2 * math.pi * day_of_year / 365)
-        cos_day = math.cos(2 * math.pi * day_of_year / 365)
-
-        sun_elev = calculate_sun_elevation(date)
-
-        prev_kwh = kwh_history[-1] if kwh_history else 0
-
-        if len(kwh_history) >= 7:
-            rolling_avg = sum(kwh_history[-7:]) / 7
-        else:
-            rolling_avg = prev_kwh
-
-        X.append([
-            sin_day,
-            cos_day,
-            clouds or 0,
-            temp or 0,
-            sun_elev,
-            prev_kwh,
-            rolling_avg
-        ])
-
-        y.append(kwh)
-        kwh_history.append(kwh)
-
-    return np.array(X), np.array(y)
-
-
-def train_model():
-    X, y = build_training_data()
-
-    if len(X) < 8: #15!!!
-        print("⚠️ Nicht genug Trainingsdaten.")
-        return None
-
-    feature_names = [
-        "sin_day",
-        "cos_day",
-        "clouds",
-        "temperature",
-        "sun_elevation",
-        "prev_kwh",
-        "rolling_avg"
-    ]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=0.2,
-        shuffle=False
-    )
-
-    # 1. RandomForestRegressor für den Erwartungswert)
-    model = RandomForestRegressor(
-        n_estimators=300,
-        random_state=42
-    )
-    model.fit(X_train, y_train)
-
-    # 2. Unteres Quantil (z.B. 10% Perzentil - "Worst Case") mit GradientBoostingRegressor
-    model_low = GradientBoostingRegressor(
-        loss='quantile', 
-        alpha=0.1,  # 0.1 entspricht dem 10. Perzentil
-        n_estimators=300, 
-        random_state=42
-    )
-    model_low.fit(X_train, y_train)
-
-    # 3. Oberes Quantil (z.B. 90% Perzentil - "Best Case") mit GradientBoostingRegressor
-    model_high = GradientBoostingRegressor(
-        loss='quantile', 
-        alpha=0.9,  # 0.9 entspricht dem 90. Perzentil
-        n_estimators=300, 
-        random_state=42
-    )
-    model_high.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    mae = mean_absolute_error(y_test, y_pred)
-    
-    joblib.dump({
-        "model": model,
-        "model_low": model_low,
-        "model_high": model_high,
-        "mae": mae,
-        "feature_names": feature_names
-    }, MODEL_FILE)
-
-    print(f"✅ Modell trainiert | MAE: {round(mae,3)}")
-
-    return model
-
-def load_or_train_model():
-    if os.path.exists(MODEL_FILE):
-        return joblib.load(MODEL_FILE)
-    train_model()
-    return joblib.load(MODEL_FILE)
 
 @app.route('/')
 def index():
@@ -475,7 +112,7 @@ def update():
             mqtt_values["inverter_temp_c"]
         ]
     
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
 
     c.execute(
@@ -500,7 +137,7 @@ def update():
 
 @app.route('/api/live')
 def live():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT w, a, v, t, panel1_w, panel2_w FROM data ORDER BY t DESC LIMIT 1")
     row = c.fetchone()
@@ -518,7 +155,7 @@ def live():
 
 @app.route('/api/widget')
 def widget():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
 
     # 1. Aktuelle Live-Werte
@@ -574,7 +211,7 @@ def get_data():
 
     diff_hours_total = (end_dt - start_dt).total_seconds() / 3600
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
@@ -792,7 +429,7 @@ def manage_prices():
     if pw != ADMIN_PASS:
         return jsonify({"error": "Falsches Passwort"}), 401
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
 
     if request.method == 'GET':
@@ -854,7 +491,7 @@ def weather():
 @app.route('/api/roi')
 def get_roi():
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
@@ -929,7 +566,7 @@ def get_roi():
 
 @app.route('/api/peaks')
 def get_peaks():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     
     today = datetime.date.today().strftime("%Y-%m-%d")
@@ -975,7 +612,7 @@ def get_heatmap():
 
     year = request.args.get("year")
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
@@ -1086,7 +723,7 @@ def get_heatmap_hourly():
     month = request.args.get("month") # Format "YYYY-MM"
     
     # Timeout hinzugefügt, damit er im Zweifel wartet statt zu blockieren
-    conn = sqlite3.connect(DB_FILE, timeout=10.0)
+    conn = get_db_connection(timeout=10)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
@@ -1208,7 +845,7 @@ def forecast():
     predictions = []
 
     # 🔹 Letzte 7 Tage für Rolling Features
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT kwh FROM daily_stats ORDER BY day DESC LIMIT 7")
     last_rows = [r[0] for r in c.fetchall()]
@@ -1217,7 +854,7 @@ def forecast():
     last_rows.reverse()
 
     # 🔹 Preise laden
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT valid_from, price FROM prices ORDER BY valid_from DESC")
     prices = [{"date": r[0], "price": r[1]} for r in c.fetchall()]
@@ -1379,7 +1016,7 @@ def shap_values():
 
     forecast_data = get_weather_forecast(days=7)
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT kwh FROM daily_stats ORDER BY day DESC LIMIT 7")
     last_rows = [r[0] for r in c.fetchall()]
