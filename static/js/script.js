@@ -845,7 +845,9 @@ function prettyFeatureName(key) {
        sun_elevation: "Sonnenstand zur Mittagszeit",
        month_sin: "Monatliche Saisonkomponente",
        sin_day: "Saisonale Phase (Sinus)",
-       cos_day: "Saisonale Phase (Cosinus)"
+       cos_day: "Saisonale Phase (Cosinus)",
+       daylight: "Tageslichtdauer",
+       sunshine: "Sonnenscheindauer"
    };
    return featureNames[key] || key;
 }
@@ -1127,7 +1129,9 @@ function showShapDetails(point) {
        sun_elevation: "Sonnenstand zur Mittagszeit",
        month_sin: "Monatliche Saisonkomponente",
        sin_day: "Saisonale Phase (Sinus)",
-       cos_day: "Saisonale Phase (Cosinus)"
+       cos_day: "Saisonale Phase (Cosinus)",
+       daylight: "Tageslichtdauer",
+       sunshine: "Sonnenscheindauer"
    };
 
    const container = document.getElementById("shapForcePlot");
