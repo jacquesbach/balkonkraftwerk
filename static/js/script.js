@@ -36,14 +36,14 @@ async function unlockAdmin() {
     });
 
     if (res.ok) {
-        currentPw = pw;
-        sessionStorage.setItem('admin_pw', pw);
+        currentPw = pw; // PW nur in den flüchtigen RAM laden
         
         document.getElementById('unlockBtn').style.display = 'none';
         document.getElementById('adminArea').style.display = 'flex';
         
         if (dashboardGrid) {
-            dashboardGrid.enable();
+            // Grid bearbeitbar machen
+            dashboardGrid.setStatic(false); 
             document.getElementById('dashboard-grid').classList.add('edit-mode');
         }
 
@@ -54,8 +54,15 @@ async function unlockAdmin() {
 }
 
 function closeAdmin() {
-   document.getElementById('adminArea').style.display = 'none';
-   document.getElementById('unlockBtn').style.display = 'block';
+    currentPw = "";
+    document.getElementById('adminArea').style.display = 'none';
+    document.getElementById('unlockBtn').style.display = 'block';
+    
+    if (dashboardGrid) {
+        // Grid wieder für alle sperren
+        dashboardGrid.setStatic(true); 
+        document.getElementById('dashboard-grid').classList.remove('edit-mode');
+    }
 }
 
 async function loadTariffs() {

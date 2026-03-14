@@ -1065,20 +1065,25 @@ def get_layout():
 def save_layout():
     data = request.json
     layout_json = data.get('layout')
-    password = data.get('pw') # Wir senden das PW zur Sicherheit mit
+    password = data.get('pw') 
 
-    # Berechtigung prüfen (wie in deinem /api/auth)
+    # Berechtigung streng prüfen
     if password != ADMIN_PASS:
         return jsonify({"error": "Nicht autorisiert"}), 403
 
-    if not layout_json:
-        return jsonify({"error": "Kein Layout gesendet"}), 400
-
     conn = get_db_connection()
     c = conn.cursor()
-    # Speichern oder Überschreiben
-    c.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)", 
-              ('dashboard_layout', json.dumps(layout_json)))
+
+    # Wenn das Signal "RESET" kommt, löschen wir das gespeicherte Layout
+    if layout_json == "RESET":
+        c.execute("DELETE FROM user_settings WHERE key = 'dashboard_layout'")
+    elif layout_json is not None:
+        c.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)", 
+                  ('dashboard_layout', json.dumps(layout_json)))
+    else:
+        conn.close()
+        return jsonify({"error": "Kein Layout gesendet"}), 400
+
     conn.commit()
     conn.close()
     
