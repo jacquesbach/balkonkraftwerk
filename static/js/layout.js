@@ -80,6 +80,26 @@ async function loadLayout() {
         dashboardGrid.load(savedLayout);
         console.log("Layout sauber neu geladen.");
     }
+
+
+}
+
+async function resetDatabaseLayout() {
+    if (!confirm("Möchtest du das Layout wirklich auf Standard zurücksetzen?")) return;
+    
+    const storedPw = sessionStorage.getItem('admin_pw');
+    if (!storedPw) return alert("Bitte erst einloggen!");
+
+    // Wir senden ein leeres Array oder null, damit der Server es löscht/leert
+    await fetch('/api/layout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            layout: [], // Leeres Layout erzwingen
+            pw: storedPw
+        })
+    });
+    location.reload();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
