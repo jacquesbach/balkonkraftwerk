@@ -1063,28 +1063,37 @@ def get_layout():
 
 @api_bp.route('/api/layout', methods=['POST'])
 def save_layout():
-    data = request.json
-    layout_json = data.get('layout')
-    password = data.get('pw') 
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Ungültiges JSON"}), 400
+            
+        layout_json = data.get('layout')
+        password = data.get('pw')
 
-    # Berechtigung streng prüfen
-    if password != ADMIN_PASS:
-        return jsonify({"error": "Nicht autorisiert"}), 403
+        if password != ADMIN_PASS:
+            return jsonify({"error": "Nicht autorisiert"}), 403
 
-    conn = get_db_connection()
-    c = conn.cursor()
+        conn = get_db_connection()
+        c = conn.cursor()
 
-    # Wenn das Signal "RESET" kommt, löschen wir das gespeicherte Layout
-    if layout_json == "RESET":
-        c.execute("DELETE FROM user_settings WHERE key = 'dashboard_layout'")
-    elif layout_json is not None:
-        c.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)", 
-                  ('dashboard_layout', json.dumps(layout_json)))
-    else:
+        if layout_json == "RESET":
+            c.execute("DELETE FROM user_settings WHERE key = 'dashboard_layout'")
+            print("Layout wurde zurückgesetzt.")
+        elif layout_json is not None:
+            # WICHTIG: Wir konvertieren das Objekt explizit in einen String für die DB
+            layout_string = json.dumps(layout_json)
+            c.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)", 
+                      ('dashboard_layout', layout_string))
+            print("Layout erfolgreich gespeichert.")
+        else:
+            conn.close()
+            return jsonify({"error": "Kein Layout-Inhalt empfangen"}), 400
+
+        conn.commit()
         conn.close()
-        return jsonify({"error": "Kein Layout gesendet"}), 400
+        return jsonify({"status": "gespeichert"}), 200
 
-    conn.commit()
-    conn.close()
-    
-    return jsonify({"status": "gespeichert"}), 200
+    except Exception as e:
+        print(f"Server-Fehler: {str(e)}")
+        return jsonify({"error": "Interner Server Fehler", "details": str(e)}), 500
