@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Balkonkraftwerk Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gridstack@10.1.1/dist/gridstack-all.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/gridstack@10.1.1/dist/gridstack.min.css" rel="stylesheet"/>
   </head>
   <body>
     <div class="container">
@@ -81,230 +83,205 @@
           </div>
         </div>
       </div>
-      <div class="main-grid">
-        <div class="card card-gradient" style="position: relative;">
-          <div id="totalLoading" style="
-        position:absolute;
-        inset:0;
-        background:rgba(255,255,255,0.15);
-        display:none;
-        align-items:center;
-        justify-content:center;
-        border-radius:24px;
-        z-index:10;
-    ">
-            <div style="
-            background:rgba(255,255,255,0.9);
-            color:#2b2b36;
-            padding:10px 18px;
-            border-radius:20px;
-            font-weight:600;
-            font-size:0.9em;
-        "> Daten werden geladen... </div>
-          </div>
-          <div class="label">Gesamtertrag</div>
-          <div class="val" id="totalKWh">0.00 <span class="unit">kWh</span>
-          </div>
-          <div class="sub-stats">
-            <div style="font-size: 0.85em; color: rgba(255,255,255,0.85); font-weight: 600;">Ersparnis in Euro</div>
-            <div style="font-weight: 800; font-size: 1.4em;" id="totalEur">0.00 €</div>
-          </div>
-        </div>
-        <div class="card card-light" style="text-align: left;">
-          <div class="label" style="border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px;">
-            <span class="live-dot">•</span> Live <span id="liveTime" style="font-weight: normal; color: var(--text-muted); font-size: 0.8em;"></span>
-          </div>
-          <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 20px; text-align: center;">
-            <div>
-              <div class="label">Leistung</div>
-              <div class="val" id="liveW">0 <span class="unit" style="color: var(--accent);">W</span>
+
+      <div class="grid-stack" id="dashboard-grid">
+
+        <div class="grid-stack-item" id="card-total" gs-w="4" gs-h="2">
+          <div class="grid-stack-item-content">
+            <div class="card card-gradient" style="height: 100%; box-sizing: border-box;">
+              <div id="totalLoading" style="position:absolute; inset:0; background:rgba(255,255,255,0.15); display:none; align-items:center; justify-content:center; border-radius:24px; z-index:10;">
+                <div style="background:rgba(255,255,255,0.9); color:#2b2b36; padding:10px 18px; border-radius:20px; font-weight:600; font-size:0.9em;">Daten werden geladen...</div>
               </div>
-            </div>
-            <div>
-              <div class="label">Stromstärke</div>
-              <div class="val" id="liveA">0.000 <span class="unit" style="color: var(--accent);">mA</span>
-              </div>
-            </div>
-            <div>
-              <div class="label">Spannung</div>
-              <div class="val" id="liveV">0 <span class="unit" style="color: var(--accent);">V</span>
+              <div class="label">Gesamtertrag</div>
+              <div class="val" id="totalKWh">0.00 <span class="unit">kWh</span></div>
+              <div class="sub-stats">
+                <div style="font-size: 0.85em; color: rgba(255,255,255,0.85); font-weight: 600;">Ersparnis in Euro</div>
+                <div style="font-weight: 800; font-size: 1.4em;" id="totalEur">0.00 €</div>
               </div>
             </div>
           </div>
         </div>
-        <div class="chart-card" style="position: relative;">
-          <div id="chartLoading" style="position:absolute; inset:0; background:rgba(255,255,255,0.75); display:none; align-items:center; justify-content:center; border-radius:24px; z-index:10;">
-            <div style="background:white; padding:12px 20px; border-radius:20px; font-weight:600; color:#888;"> Daten werden geladen... </div>
-          </div>
-          <div class="chart-header">
-            <span class="title">Verlauf & Ersparnis</span>
-            <span>Balken: kWh | Linie: €</span>
-          </div>
-          <div style="height: 100%; width: 100%; padding-bottom: 25px; box-sizing: border-box;">
-            <canvas id="mainChart"></canvas>
-          </div>
-        </div>
-        <div class="chart-card" style="position: relative;">
-          <div id="panelChartLoading" style="position:absolute; inset:0; background:rgba(255,255,255,0.75); display:none; align-items:center; justify-content:center; border-radius:24px; z-index:10;">
-            <div style="background:white; padding:12px 20px; border-radius:20px; font-weight:600; color:#888;"> Daten werden geladen... </div>
-          </div>
-          <div class="chart-header">
-            <span class="title">Panel-Vergleich (DC)</span>
-            <span>Stacked: kWh</span>
-          </div>
-          <div style="height: 100%; width: 100%; padding-bottom: 25px; box-sizing: border-box;">
-            <canvas id="panelChart"></canvas>
-          </div>
-        </div>
-        <div class="card card-light heatmap-card" style="position: relative;">
-          <div id="hourlyHeatmapLoading" style="position:absolute; inset:0; background:rgba(255,255,255,0.75); display:none; align-items:center; justify-content:center; border-radius:24px; z-index:10;">
-            <div style="background:white; padding:12px 20px; border-radius:20px; font-weight:600; color:#888;"> Daten werden geladen... </div>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div class="label">Tagesverlauf & Dominanz der Panels (DC)</div>
-            <select id="hourlyMonthSelect" style="padding:6px 10px; border-radius:8px; border:1px solid #ddd; background:#f9f9f9; font-family:inherit;"></select>
-          </div>
-          <div id="hourlyHeatmapContainer" class="hourly-grid"></div>
-          <div class="heatmap-legend">
-            <span style="color: #4682B4; font-weight: bold;">Panel 1</span>
-            <div class="heatmap-legend-bar" style="background: linear-gradient(90deg, #4682B4, #f0f0f5, #be5103);"></div>
-            <span style="color: #be5103; font-weight: bold;">Panel 2</span>
-          </div>
-        </div>
-        <div class="card card-light" style="text-align: center; min-height: 350px; display: flex; flex-direction: column;">
-          <div class="label" style="border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 10px; text-align: left;">
-            <span class="live-dot">•</span> Live Verteilung nach Panels (DC)
-          </div>
-          <div style="flex-grow: 1; position: relative; width: 100%; max-height: 300px; margin: 0 auto;">
-            <canvas id="dcDonutChart"></canvas>
-          </div>
-          <div style="display: flex; justify-content: space-around; margin-top: 15px; padding-top: 10px; border-top: 1px solid #f9f9f9;">
-            <div>
-              <div class="label" style="font-size: 0.7em;">Panel 1</div>
-              <div id="percP1" style="font-weight: bold; color: #4682B4;">0%</div>
-            </div>
-            <div>
-              <div class="label" style="font-size: 0.7em;">Panel 2</div>
-              <div id="percP2" style="font-weight: bold; color: #be5103;">0%</div>
-            </div>
-          </div>
-        </div>
-        <div class="card card-gradient card-peak">
-          <div class="label">Leistungs-Rekorde (AC)</div>
-          <div class="val">
-            <span id="peak-today">0.0</span>
-            <span class="unit">W</span>
-          </div>
-          <div class="sub-stats">
-            <div>
-              <div style="font-size:0.8em; opacity:0.8;">Heute</div>
-              <div style="font-weight:700;" id="peak-today-sub">0.0 W</div>
-            </div>
-            <div>
-              <div style="font-size:0.8em; opacity:0.8;">All-Time</div>
-              <div style="font-weight:700;" id="peak-alltime">0.0 W</div>
-            </div>
-          </div>
-        </div>
-        <div class="card card-light card-roi">
-          <div class="label">ROI Fortschritt</div>
-          <div class="val" id="roi-saved">0,00 €</div>
-          <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 15px;" id="roi-kwh"> Gesamt erzeugt: 0 kWh </div>
-          <div class="roi-progress-wrapper">
-            <div id="roi-bar" class="roi-progress-bar"></div>
-          </div>
-          <div class="roi-percent" id="roi-percent">0%</div>
-          <div id="roi-achieved-container"></div>
-        </div>
-        <div class="card card-light heatmap-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <div class="label">Jahres-Heatmap</div>
-            <select id="heatmapYearSelect" style="
-              padding:8px 12px;
-              border-radius:10px;
-              border:1px solid #ddd;
-              background:#f9f9f9;
-              font-family:inherit;
-          "></select>
-          </div>
-          <div id="heatmapContainer" class="heatmap-grid"></div>
-          <!-- Legende -->
-          <div class="heatmap-legend">
-            <span>Wenig</span>
-            <div class="heatmap-legend-bar" id="heatmapLegendBar"></div>
-            <span>Viel</span>
-          </div>
-        </div>
-        <!-- ======================================= -->
-        <!-- ERTRAGSPROGNOSE -->
-        <!-- ======================================= -->
-        <div class="card card-light" style="margin-top:30px;">
-          <div class="label">Prognose</div>
-          <p style="font-size:0.9em; color:var(--text-muted); margin-bottom:20px;"> ML-basierte 7-Tage Prognose auf Basis von Ertrag, Bewölkung, Sonnenhöhe und Wettervorhersage. </p>
-          <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 20px; text-align: center;">
-            <div>
-              <div class="label">7-Tage-Prognose</div>
-              <div class="val" id="forecast-total-kwh">- <span class="unit" style="color: var(--accent);">kWh</span>
+      
+        <div class="grid-stack-item" id="card-live" gs-w="8" gs-h="2">
+          <div class="grid-stack-item-content">
+            <div class="card card-light" style="height: 100%; text-align: left; box-sizing: border-box;">
+              <div class="label" style="border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px;">
+                <span class="live-dot">•</span> Live <span id="liveTime" style="font-weight: normal; color: var(--text-muted); font-size: 0.8em;"></span>
               </div>
-            </div>
-            <div>
-              <div class="label">Ersparnis</div>
-              <div class="val" id="forecast-total-eur">- <span class="unit" style="color: var(--accent);">€</span>
-              </div>
-            </div>
-            <div>
-              <div class="label">MAE</div>
-              <div class="val" id="forecast-mae">- <span class="unit" style="color: var(--accent);">kWh</span>
+              <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 20px; text-align: center;">
+                <div><div class="label">Leistung</div><div class="val" id="liveW">0 <span class="unit" style="color: var(--accent);">W</span></div></div>
+                <div><div class="label">Stromstärke</div><div class="val" id="liveA">0.000 <span class="unit" style="color: var(--accent);">mA</span></div></div>
+                <div><div class="label">Spannung</div><div class="val" id="liveV">0 <span class="unit" style="color: var(--accent);">V</span></div></div>
               </div>
             </div>
           </div>
-          <canvas id="forecastChart" height="240"></canvas>
-          <div id="shapDetailCard" style="display:none; margin-top:25px;">
-            <div class="label">Prognose-Details</div>
-            <div id="shapDetailkWh" style="font-size:0.9em; margin-bottom:15px;"></div>
-            <div id="shapForcePlot" style="display:flex;
-                      align-items:center;
-                      height:42px;
-                      overflow:hidden;
-                      margin-bottom:20px;"></div>
-            <div id="shapLegend" class="shap-legend"></div>
-            <!-- ========================= -->
-            <!-- MODELL ERKLÄRUNG -->
-            <!-- ========================= -->
-            <div style="font-size:0.9em; line-height:2;margin-top:20px; border-top:1px solid #f0f0f0; padding-top:15px;">
-              <div>
-                <span>Grundniveau (Baseline)</span>
-                <strong id="modelBaseline"></strong>
+        </div>
+      
+        <div class="grid-stack-item" id="card-main-chart" gs-w="12" gs-h="4">
+          <div class="grid-stack-item-content">
+            <div class="chart-card" style="height: 100%; box-sizing: border-box; position: relative;">
+              <div id="chartLoading" style="position:absolute; inset:0; background:rgba(255,255,255,0.75); display:none; align-items:center; justify-content:center; border-radius:24px; z-index:10;">
+                <div style="background:white; padding:12px 20px; border-radius:20px; font-weight:600; color:#888;">Daten werden geladen...</div>
               </div>
-              <div>
-                <span>Faktoren-Effekt</span>
-                <strong id="modelEffect"></strong>
+              <div class="chart-header">
+                <span class="title">Verlauf & Ersparnis</span>
+                <span>Balken: kWh | Linie: €</span>
               </div>
-              <div>
-                <span>Abweichung vom Modellniveau</span>
-                <strong id="modelDeviation"></strong>
+              <div style="height: calc(100% - 30px); width: 100%; box-sizing: border-box;">
+                <canvas id="mainChart"></canvas>
               </div>
-              <div id="modelInterpretation"></div>
             </div>
-            <div style="margin-top:20px; border-top:1px solid #f0f0f0; padding-top:15px;">
-              <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-                <img src="https://img.icons8.com/ios-filled/18/ff4b72/sun.png" />
-                <strong id="seasonLabel"></strong>
-              </div>
-              <div style="font-size:0.9em;"> Saison-Effekt: <strong id="seasonStrength"></strong> kWh </div>
-              <div style="font-size:0.9em; margin-bottom:10px;"> Anteil an Prognose: <strong id="seasonStrengthNormalized"></strong> % </div>
-              <div id="seasonInterpretation" style="font-size:0.9em; color:var(--text-muted); line-height:1.5;"></div>
-            </div>
-          </div>
-          <div style="margin-top:30px;">
-            <div class="label" style="margin-bottom:10px;"> Global SHAP </div>
-            <canvas id="globalShapChart" height="160"></canvas>
-          </div>
-          <div style="margin-top:30px;">
-            <div class="label" style="margin-bottom:10px;"> Feature Importance </div>
-            <canvas id="featureImportanceChart" height="160"></canvas>
           </div>
         </div>
+      
+        <div class="grid-stack-item" id="card-panel-chart" gs-w="12" gs-h="4">
+          <div class="grid-stack-item-content">
+            <div class="chart-card" style="height: 100%; box-sizing: border-box; position: relative;">
+              <div id="panelChartLoading" style="position:absolute; inset:0; background:rgba(255,255,255,0.75); display:none; align-items:center; justify-content:center; border-radius:24px; z-index:10;">
+                <div style="background:white; padding:12px 20px; border-radius:20px; font-weight:600; color:#888;">Daten werden geladen...</div>
+              </div>
+              <div class="chart-header">
+                <span class="title">Panel-Vergleich (DC)</span>
+                <span>Stacked: kWh</span>
+              </div>
+              <div style="height: calc(100% - 30px); width: 100%; box-sizing: border-box;">
+                <canvas id="panelChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <div class="grid-stack-item" id="card-hourly-heatmap" gs-w="8" gs-h="4">
+          <div class="grid-stack-item-content">
+            <div class="card card-light heatmap-card" style="height: 100%; box-sizing: border-box; position: relative;">
+              <div id="hourlyHeatmapLoading" style="position:absolute; inset:0; background:rgba(255,255,255,0.75); display:none; align-items:center; justify-content:center; border-radius:24px; z-index:10;">
+                <div style="background:white; padding:12px 20px; border-radius:20px; font-weight:600; color:#888;">Daten werden geladen...</div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div class="label">Tagesverlauf & Dominanz der Panels (DC)</div>
+                <select id="hourlyMonthSelect" style="padding:6px 10px; border-radius:8px; border:1px solid #ddd; background:#f9f9f9; font-family:inherit;"></select>
+              </div>
+              <div id="hourlyHeatmapContainer" class="hourly-grid"></div>
+              <div class="heatmap-legend">
+                <span style="color: #4682B4; font-weight: bold;">Panel 1</span>
+                <div class="heatmap-legend-bar" style="background: linear-gradient(90deg, #4682B4, #f0f0f5, #be5103);"></div>
+                <span style="color: #be5103; font-weight: bold;">Panel 2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <div class="grid-stack-item" id="card-donut-chart" gs-w="4" gs-h="4">
+          <div class="grid-stack-item-content">
+            <div class="card card-light" style="height: 100%; box-sizing: border-box; text-align: center; display: flex; flex-direction: column;">
+              <div class="label" style="border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 10px; text-align: left;">
+                <span class="live-dot">•</span> Live Verteilung nach Panels (DC)
+              </div>
+              <div style="flex-grow: 1; position: relative; width: 100%; min-height: 200px; margin: 0 auto;">
+                <canvas id="dcDonutChart"></canvas>
+              </div>
+              <div style="display: flex; justify-content: space-around; margin-top: 15px; padding-top: 10px; border-top: 1px solid #f9f9f9;">
+                <div><div class="label" style="font-size: 0.7em;">Panel 1</div><div id="percP1" style="font-weight: bold; color: #4682B4;">0%</div></div>
+                <div><div class="label" style="font-size: 0.7em;">Panel 2</div><div id="percP2" style="font-weight: bold; color: #be5103;">0%</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <div class="grid-stack-item" id="card-records" gs-w="6" gs-h="2">
+          <div class="grid-stack-item-content">
+            <div class="card card-gradient card-peak" style="height: 100%; box-sizing: border-box;">
+              <div class="label">Leistungs-Rekorde (AC)</div>
+              <div class="val"><span id="peak-today">0.0</span> <span class="unit">W</span></div>
+              <div class="sub-stats">
+                <div><div style="font-size:0.8em; opacity:0.8;">Heute</div><div style="font-weight:700;" id="peak-today-sub">0.0 W</div></div>
+                <div><div style="font-size:0.8em; opacity:0.8;">All-Time</div><div style="font-weight:700;" id="peak-alltime">0.0 W</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <div class="grid-stack-item" id="card-roi" gs-w="6" gs-h="2">
+          <div class="grid-stack-item-content">
+            <div class="card card-light card-roi" style="height: 100%; box-sizing: border-box;">
+              <div class="label">ROI Fortschritt</div>
+              <div class="val" id="roi-saved">0,00 €</div>
+              <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 15px;" id="roi-kwh">Gesamt erzeugt: 0 kWh</div>
+              <div class="roi-progress-wrapper"><div id="roi-bar" class="roi-progress-bar"></div></div>
+              <div class="roi-percent" id="roi-percent">0%</div>
+              <div id="roi-achieved-container"></div>
+            </div>
+          </div>
+        </div>
+      
+        <div class="grid-stack-item" id="card-yearly-heatmap" gs-w="12" gs-h="3">
+          <div class="grid-stack-item-content">
+            <div class="card card-light heatmap-card" style="height: 100%; box-sizing: border-box;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <div class="label">Jahres-Heatmap</div>
+                <select id="heatmapYearSelect" style="padding:8px 12px; border-radius:10px; border:1px solid #ddd; background:#f9f9f9; font-family:inherit;"></select>
+              </div>
+              <div id="heatmapContainer" class="heatmap-grid"></div>
+              <div class="heatmap-legend">
+                <span>Wenig</span>
+                <div class="heatmap-legend-bar" id="heatmapLegendBar"></div>
+                <span>Viel</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <div class="grid-stack-item" id="card-forecast" gs-w="12" gs-h="8">
+          <div class="grid-stack-item-content">
+            <div class="card card-light" style="height: 100%; box-sizing: border-box;">
+              <div class="label">Prognose</div>
+              <p style="font-size:0.9em; color:var(--text-muted); margin-bottom:20px;">ML-basierte 7-Tage Prognose auf Basis von Ertrag, Bewölkung, Sonnenhöhe und Wettervorhersage.</p>
+              
+              <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 20px; text-align: center;">
+                <div><div class="label">7-Tage-Prognose</div><div class="val" id="forecast-total-kwh">- <span class="unit" style="color: var(--accent);">kWh</span></div></div>
+                <div><div class="label">Ersparnis</div><div class="val" id="forecast-total-eur">- <span class="unit" style="color: var(--accent);">€</span></div></div>
+                <div><div class="label">MAE</div><div class="val" id="forecast-mae">- <span class="unit" style="color: var(--accent);">kWh</span></div></div>
+              </div>
+              
+              <canvas id="forecastChart" height="240"></canvas>
+              
+              <div id="shapDetailCard" style="display:none; margin-top:25px;">
+                <div class="label">Prognose-Details</div>
+                <div id="shapDetailkWh" style="font-size:0.9em; margin-bottom:15px;"></div>
+                <div id="shapForcePlot" style="display:flex; align-items:center; height:42px; overflow:hidden; margin-bottom:20px;"></div>
+                <div id="shapLegend" class="shap-legend"></div>
+                
+                <div style="font-size:0.9em; line-height:2;margin-top:20px; border-top:1px solid #f0f0f0; padding-top:15px;">
+                  <div><span>Grundniveau (Baseline)</span> <strong id="modelBaseline"></strong></div>
+                  <div><span>Faktoren-Effekt</span> <strong id="modelEffect"></strong></div>
+                  <div><span>Abweichung vom Modellniveau</span> <strong id="modelDeviation"></strong></div>
+                  <div id="modelInterpretation"></div>
+                </div>
+                
+                <div style="margin-top:20px; border-top:1px solid #f0f0f0; padding-top:15px;">
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                    <img src="https://img.icons8.com/ios-filled/18/ff4b72/sun.png" />
+                    <strong id="seasonLabel"></strong>
+                  </div>
+                  <div style="font-size:0.9em;">Saison-Effekt: <strong id="seasonStrength"></strong> kWh</div>
+                  <div style="font-size:0.9em; margin-bottom:10px;">Anteil an Prognose: <strong id="seasonStrengthNormalized"></strong> %</div>
+                  <div id="seasonInterpretation" style="font-size:0.9em; color:var(--text-muted); line-height:1.5;"></div>
+                </div>
+              </div>
+              
+              <div style="margin-top:30px;">
+                <div class="label" style="margin-bottom:10px;">Global SHAP</div>
+                <canvas id="globalShapChart" height="160"></canvas>
+              </div>
+              <div style="margin-top:30px;">
+                <div class="label" style="margin-bottom:10px;">Feature Importance</div>
+                <canvas id="featureImportanceChart" height="160"></canvas>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+      
       </div>
       <footer>
         <a href="https://github.com/jacquesbach/balkonkraftwerk" target="_blank" class="footer-status">
@@ -316,5 +293,6 @@
       </footer>
     </div>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/layout.js') }}"></script>
 </body>
 </html>

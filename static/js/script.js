@@ -25,27 +25,34 @@ async function checkLoadingStatus() {
        }
    } catch (e) {}
 }
+let currentPw = null; 
 
 async function unlockAdmin() {
-   const pw = prompt("Passwort zur Anpassung des Stromtarifs:");
-   if (!pw) return;
-   const res = await fetch('/api/auth', {
-       method: 'POST',
-       headers: {
-           'Content-Type': 'application/json'
-       },
-       body: JSON.stringify({
-           pw: pw
-       })
-   });
-   if (res.ok) {
-       currentPw = pw;
-       document.getElementById('unlockBtn').style.display = 'none';
-       document.getElementById('adminArea').style.display = 'flex';
-       loadTariffs();
-   } else {
-       alert("Falsches Passwort!");
-   }
+    const pw = prompt("Passwort zur Anpassung des Stromtarifs & Layouts:");
+    if (!pw) return;
+
+    const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pw: pw })
+    });
+
+    if (res.ok) {
+        currentPw = pw;
+        sessionStorage.setItem('admin_pw', pw);
+        
+        document.getElementById('unlockBtn').style.display = 'none';
+        document.getElementById('adminArea').style.display = 'flex';
+        
+        if (dashboardGrid) {
+            dashboardGrid.enable();
+            document.getElementById('dashboard-grid').classList.add('edit-mode');
+        }
+
+        loadTariffs();
+    } else {
+        alert("Falsches Passwort!");
+    }
 }
 
 function closeAdmin() {

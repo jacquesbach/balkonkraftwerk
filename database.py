@@ -75,7 +75,11 @@ def init_db():
     c.execute("SELECT COUNT(*) FROM prices")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO prices (valid_from, price) VALUES ('2026-01-01', 0.329)")
-        
+    
+    # 5. User Settings Tabelle
+    c.execute('''CREATE TABLE IF NOT EXISTS user_settings 
+                 (key TEXT PRIMARY KEY, value TEXT)''')
+            
     conn.commit()
     conn.close()
     print("Datenbank erfolgreich initialisiert.")

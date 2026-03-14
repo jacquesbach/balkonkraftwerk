@@ -1049,3 +1049,39 @@ def shap_summary():
     ]
 
     return jsonify(sorted(result, key=lambda x: x["mean_abs_shap"], reverse=True))
+
+@api_bp.route('/api/layout', methods=['GET'])
+def get_layout():
+    # Jeder darf das Layout sehen (auch nicht angemeldete)
+    conn = sqlite3.connect('solar_data.db')
+    c = conn.cursor()
+    c.execute("SELECT value FROM user_settings WHERE key = 'dashboard_layout'")
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return jsonify({"layout": json.loads(row[0])}), 200
+    return jsonify({"layout": None}), 404
+
+@api_bp.route('/api/layout', methods=['POST'])
+def save_layout():
+    data = request.json
+    layout_json = data.get('layout')
+    password = data.get('pw') # Wir senden das PW zur Sicherheit mit
+
+    # Berechtigung prüfen (wie in deinem /api/auth)
+    if password != ADMIN_PASS:
+        return jsonify({"error": "Nicht autorisiert"}), 403
+
+    if not layout_json:
+        return jsonify({"error": "Kein Layout gesendet"}), 400
+
+    conn = sqlite3.connect('solar_data.db')
+    c = conn.cursor()
+    # Speichern oder Überschreiben
+    c.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)", 
+              ('dashboard_layout', json.dumps(layout_json)))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"status": "gespeichert"}), 200
