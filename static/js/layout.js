@@ -1,4 +1,5 @@
 let dashboardGrid;
+let currentPw = sessionStorage.getItem('admin_pw') || "";
 
 // 1. Grid initialisieren
 function initGridstack() {
@@ -63,26 +64,28 @@ async function loadLayout() {
     let savedLayout = null;
 
     try {
-        // Zuerst versuchen, aus der Datenbank zu laden
-        const authResponse = await fetch('/api/auth');
-        if (authResponse.ok) {
-            const layoutResponse = await fetch('/api/layout');
-            if (layoutResponse.ok) {
-                const data = await layoutResponse.json();
-                if (data.layout) savedLayout = data.layout;
+        // Wir versuchen es direkt beim API-Endpunkt
+        const response = await fetch('/api/layout');
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.layout) {
+                savedLayout = data.layout;
+                console.log("Layout aus DB geladen");
             }
-        } else {
-            throw new Error("Nicht angemeldet");
         }
     } catch (error) {
-        // Fallback: Aus dem LocalStorage laden
+        console.warn("API Layout nicht verfügbar, versuche LocalStorage...");
+    }
+
+    // Wenn DB nicht ging oder leer war, schau im LocalStorage nach
+    if (!savedLayout) {
         const localData = localStorage.getItem('balkonkraftwerk_layout');
         if (localData) {
             savedLayout = JSON.parse(localData);
+            console.log("Layout aus LocalStorage geladen");
         }
     }
 
-    // Wenn ein Layout gefunden wurde, anwenden
     if (savedLayout && dashboardGrid) {
         dashboardGrid.load(savedLayout);
     }

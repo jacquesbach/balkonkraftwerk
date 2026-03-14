@@ -2,7 +2,6 @@ let myChart;
 let panelChart;
 let dcDonutChart;
 let activeDonutIndex = null; // null = Gesamtansicht, 0 = Panel 1, 1 = Panel 2
-let currentPw = "";
 
 const ROI_DEBUG_FORCE_COMPLETE = false;
 
@@ -585,8 +584,12 @@ async function updateROI() {
            roiCard.classList.remove('roi-complete');
            badgeContainer.innerHTML = '';
        }
-       updateROIForecast();
-   } catch (e) {
+       if (typeof updateROIForecast === "function") {
+            updateROIForecast();
+        } else {
+            console.log("updateROIForecast ist noch nicht implementiert.");
+        }
+    } catch (e) {
        console.error("ROI Fehler", e);
    }
 
