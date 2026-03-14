@@ -25,7 +25,6 @@ async function checkLoadingStatus() {
        }
    } catch (e) {}
 }
-let currentPw = null; 
 
 async function unlockAdmin() {
     const pw = prompt("Passwort zur Anpassung des Stromtarifs & Layouts:");
