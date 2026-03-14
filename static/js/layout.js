@@ -62,40 +62,73 @@ async function saveLayout() {
 // 4. Layout beim Starten laden
 async function loadLayout() {
     let savedLayout = null;
-
     try {
-        // Wir versuchen es direkt beim API-Endpunkt
         const response = await fetch('/api/layout');
         if (response.ok) {
             const data = await response.json();
-            if (data && data.layout) {
-                savedLayout = data.layout;
-                console.log("Layout aus DB geladen");
-            }
+            if (data && data.layout) savedLayout = data.layout;
         }
-    } catch (error) {
-        console.warn("API Layout nicht verfügbar, versuche LocalStorage...");
-    }
+    } catch (e) { console.error("DB Load failed", e); }
 
-    // Wenn DB nicht ging oder leer war, schau im LocalStorage nach
     if (!savedLayout) {
         const localData = localStorage.getItem('balkonkraftwerk_layout');
-        if (localData) {
-            savedLayout = JSON.parse(localData);
-            console.log("Layout aus LocalStorage geladen");
-        }
+        if (localData) savedLayout = JSON.parse(localData);
     }
 
     if (savedLayout && dashboardGrid) {
+        dashboardGrid.removeAll(); 
         dashboardGrid.load(savedLayout);
+        console.log("Layout sauber neu geladen.");
     }
 }
 
-// Beim Laden der Seite ausführen (füge das zu deinen anderen Init-Funktionen hinzu)
 document.addEventListener("DOMContentLoaded", async () => {
+    // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
-    await loadLayout();
-    
-    // Nach dem Laden des Layouts kann es helfen, Chart.js einen Resize-Befehl zu geben
-    window.dispatchEvent(new Event('resize')); 
+    await loadLayout(); // Wartet, bis Boxen aus DB oder LocalStorage da sind
+
+    // --- PHASE 2: Startwerte für Datumsfelder setzen ---
+    const t = new Date().toISOString().split('T')[0];
+    const startInput = document.getElementById('start');
+    const endInput = document.getElementById('end');
+
+    if (startInput && endInput) {
+        startInput.value = t;
+        endInput.value = t;
+        startInput.addEventListener('change', updateQuickButtonsActiveState);
+        endInput.addEventListener('change', updateQuickButtonsActiveState);
+    }
+
+    // --- PHASE 3: Daten in die Boxen pumpen ---
+    // Wir prüfen bei jeder Funktion, ob sie existiert, um Fehler zu vermeiden
+    try {
+        if (typeof fetchData === "function") await fetchData();
+        if (typeof updateWeather === "function") updateWeather();
+        if (typeof updateLive === "function") updateLive();
+        if (typeof updatePeaks === "function") updatePeaks();
+        if (typeof updateQuickButtonsActiveState === "function") updateQuickButtonsActiveState();
+        
+        // ML-Funktionen
+        if (typeof loadForecast === "function") loadForecast();
+        if (typeof loadGlobalShap === "function") loadGlobalShap();
+        if (typeof loadFeatureImportance === "function") loadFeatureImportance();
+        
+        // Heatmaps
+        if (typeof initHeatmapYears === "function") initHeatmapYears();
+        if (typeof initHourlyHeatmap === "function") initHourlyHeatmap();
+
+    } catch (err) {
+        console.error("Fehler beim initialen Daten-Load:", err);
+    }
+
+    // --- PHASE 4: Intervalle für Updates starten ---
+    setInterval(() => { if (typeof updateLive === "function") updateLive(); }, 5000);
+    setInterval(() => { if (typeof fetchData === "function") fetchData(); }, 60000);
+    setInterval(() => { if (typeof updatePeaks === "function") updatePeaks(); }, 60000);
+    setInterval(() => { if (typeof checkLoadingStatus === "function") checkLoadingStatus(); }, 500);
+
+    // WICHTIG: Einmal kräftig schütteln, damit Charts ihre Größe im neuen Grid finden
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 200); 
 });

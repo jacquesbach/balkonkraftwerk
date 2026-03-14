@@ -1397,22 +1397,3 @@ function showShapDetails(point) {
 
    document.getElementById("seasonInterpretation").innerText = text;
 }
-
-
-const t = new Date().toISOString().split('T')[0];
-document.getElementById('start').value = t;
-document.getElementById('end').value = t;
-document.getElementById('start').addEventListener('change', updateQuickButtonsActiveState);
-document.getElementById('end').addEventListener('change', updateQuickButtonsActiveState);
-fetchData();
-updateWeather();
-updateLive();
-updatePeaks();
-updateQuickButtonsActiveState();
-loadForecast();
-loadGlobalShap();
-loadFeatureImportance();
-setInterval(updateLive, 5000);
-setInterval(fetchData, 60000);
-setInterval(updatePeaks, 60000);
-setInterval(checkLoadingStatus, 500);
