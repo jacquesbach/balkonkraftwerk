@@ -19,6 +19,7 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    overflow-x: hidden;
   }
 
   .header {
@@ -157,7 +158,12 @@
       box-shadow 0.2s ease,
       transform 0.15s ease;
   }
-  
+
+  .grid-stack {
+    margin-left: -20px;
+    margin-right: -20px;
+  }
+
   .grid-stack-item-content {
     overflow-x: hidden;
     overflow-y: auto; 
