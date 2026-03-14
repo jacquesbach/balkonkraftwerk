@@ -36,7 +36,7 @@ async function unlockAdmin() {
     });
 
     if (res.ok) {
-        currentPw = pw; // PW nur in den flüchtigen RAM laden
+        currentPw = pw;
         
         document.getElementById('unlockBtn').style.display = 'none';
         document.getElementById('adminArea').style.display = 'flex';
