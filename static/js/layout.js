@@ -19,24 +19,31 @@ function initGridstack() {
 
 // 2. Layout speichern (Nur in DB und nur wenn PW da ist)
 async function saveLayout() {
-    if (!dashboardGrid || !currentPw) return;
+    if (!dashboardGrid || !currentPw || currentPw === "") {
+        return; 
+    }
     
     const layoutData = dashboardGrid.save(); 
 
     try {
         const response = await fetch('/api/layout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ 
                 layout: layoutData,
                 pw: currentPw 
             })
         });
         
-        if (response.ok) {
-            console.log("Layout in DB für alle Nutzer aktualisiert.");
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Speichern fehlgeschlagen:", errorText);
         }
-    } catch (e) { console.error("DB Save failed", e); }
+    } catch (e) { 
+        console.error("Netzwerkfehler beim Speichern:", e); 
+    }
 }
 
 // 3. Layout beim Starten laden
