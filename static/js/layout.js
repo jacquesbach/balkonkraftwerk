@@ -85,6 +85,32 @@ async function resetDatabaseLayout() {
     }
 }
 
+function resizeForecastCardToFit() {
+    if (!window.dashboardGrid) return;
+    
+    const gridItem = document.getElementById('card-forecast');
+    const innerCard = gridItem.querySelector('.card');
+    
+    if (!gridItem || !innerCard) return;
+
+    // 1. Wir erlauben der Karte kurz, ihre natürliche, volle Höhe anzunehmen
+    innerCard.style.height = 'auto';
+    const requiredHeightPx = innerCard.scrollHeight;
+    
+    // 2. Zurücksetzen für das Flex-Layout
+    innerCard.style.height = '100%';
+
+    // 3. Höhe einer einzelnen Gridstack-Zelle plus Margin abrufen
+    const cellHeight = dashboardGrid.getCellHeight(); 
+    const margin = dashboardGrid.getOpts().margin || 20;
+
+    // 4. Ausrechnen, wie viele "Blöcke" (h) wir brauchen, aufgerundet
+    const newH = Math.ceil((requiredHeightPx + margin) / (cellHeight + margin));
+
+    // 5. Gridstack anweisen, die neue Höhe anzuwenden
+    dashboardGrid.update(gridItem, { h: newH });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
