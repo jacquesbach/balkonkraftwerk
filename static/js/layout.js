@@ -93,22 +93,27 @@ function resizeForecastCardToFit() {
     
     if (!gridItem || !innerCard) return;
 
-    // 1. Wir erlauben der Karte kurz, ihre natürliche, volle Höhe anzunehmen
+    // 1. Temporär feste Höhen lösen
     innerCard.style.height = 'auto';
-    const requiredHeightPx = innerCard.scrollHeight;
-    
-    // 2. Zurücksetzen für das Flex-Layout
-    innerCard.style.height = '100%';
+    innerCard.style.minHeight = 'auto';
 
-    // 3. Höhe einer einzelnen Gridstack-Zelle plus Margin abrufen
-    const cellHeight = dashboardGrid.getCellHeight(); 
+    // 2. Die tatsächliche Höhe messen
+    // Wir nehmen scrollHeight, um den Inhalt außerhalb des sichtbaren Bereichs zu erfassen
+    const requiredHeightPx = innerCard.scrollHeight;
+
+    // 3. Gridstack Zellen-Metriken
+    const cellHeight = dashboardGrid.getCellHeight();
     const margin = dashboardGrid.getOpts().margin || 20;
 
-    // 4. Ausrechnen, wie viele "Blöcke" (h) wir brauchen, aufgerundet
-    const newH = Math.ceil((requiredHeightPx + margin) / (cellHeight + margin));
+    // 4. Berechnung der benötigten Rows (h)
+    // Wir addieren einen kleinen Puffer (10px) für Padding-Unterschiede
+    const newH = Math.ceil((requiredHeightPx + 10) / (cellHeight + margin));
 
-    // 5. Gridstack anweisen, die neue Höhe anzuwenden
+    // 5. Update ausführen
     dashboardGrid.update(gridItem, { h: newH });
+    
+    // 6. Zurück auf 100%, damit die Card-Klasse das Gridstack-Item wieder voll ausfüllt
+    innerCard.style.height = '100%';
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

@@ -1047,6 +1047,14 @@ async function loadForecast() {
            }
        }
    });
+   // 1. Sicherstellen, dass die Details am Anfang ausgeblendet sind
+   document.getElementById("shapDetailCard").style.display = "none";
+
+   // 2. WICHTIG: Die Karte sofort an den Inhalt (Global SHAP etc.) anpassen
+   // Ein kleines Delay hilft, damit das Chart fertig gerendert ist
+   setTimeout(() => {
+       resizeForecastCardToFit();
+   }, 200);
 }
 
 async function loadFeatureImportance() {
