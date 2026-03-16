@@ -1151,20 +1151,6 @@ function showShapDetails(point) {
    };
 
    const container = document.getElementById("shapForcePlot");
-
-   // ===== ResizeObserver nur einmal registrieren =====
-   if (!container._resizeObserverAttached) {
-
-       const observer = new ResizeObserver(() => {
-           if (window._lastShapPoint) {
-               showShapDetails(window._lastShapPoint);
-           }
-       });
-
-       observer.observe(container);
-       container._resizeObserverAttached = true;
-   }
-
    container.innerHTML = "";
    container.style.position = "relative";
    container.style.display = "flex";

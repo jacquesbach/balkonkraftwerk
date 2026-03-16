@@ -15,6 +15,16 @@ function initGridstack() {
     dashboardGrid.on('change', function(event, items) {
         saveLayout();
     });
+
+    dashboardGrid.on('resizestop', function(event, el) {
+        const charts = el.querySelectorAll("canvas");
+        charts.forEach(canvas => {
+            const chart = Chart.getChart(canvas);
+            if (chart) {
+                chart.resize();
+            }
+        });
+    });
 }
 
 // 2. Layout speichern (Nur in DB und nur wenn PW da ist)
@@ -85,10 +95,58 @@ async function resetDatabaseLayout() {
     }
 }
 
+function resizeGridItemToContent(gridItemId) {
+
+    const el = document.getElementById(gridItemId);
+    if (!el || !dashboardGrid) return;
+
+    const content = el.querySelector(".card");
+
+    const contentHeight = content.scrollHeight;
+
+    const cellHeight = dashboardGrid.getCellHeight();
+    const margin = dashboardGrid.opts.margin;
+
+    const newHeight = Math.ceil((contentHeight + margin) / cellHeight);
+
+    dashboardGrid.update(el, { h: newHeight });
+}
+
+function initAutoCardResize() {
+
+    const cards = document.querySelectorAll(".grid-stack-item");
+
+    const observer = new ResizeObserver(entries => {
+
+        entries.forEach(entry => {
+
+            const gridItem = entry.target.closest(".grid-stack-item");
+
+            if (!gridItem) return;
+
+            const id = gridItem.id;
+
+            resizeGridItemToContent(id);
+
+        });
+
+    });
+
+    cards.forEach(card => {
+
+        const content = card.querySelector(".card");
+
+        if (content) observer.observe(content);
+
+    });
+
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
     await loadLayout(); // Wartet, bis Boxen aus DB oder LocalStorage da sind
+    initAutoCardResize();
 
     // --- PHASE 2: Startwerte für Datumsfelder setzen ---
     const t = new Date().toISOString().split('T')[0];
