@@ -85,37 +85,6 @@ async function resetDatabaseLayout() {
     }
 }
 
-function resizeForecastCardToFit() {
-    if (!window.dashboardGrid) return;
-    
-    const gridItem = document.getElementById('card-forecast');
-    const innerCard = gridItem.querySelector('.card');
-    
-    if (!gridItem || !innerCard) return;
-
-    // 1. Temporär feste Höhen lösen
-    innerCard.style.height = 'auto';
-    innerCard.style.minHeight = 'auto';
-
-    // 2. Die tatsächliche Höhe messen
-    // Wir nehmen scrollHeight, um den Inhalt außerhalb des sichtbaren Bereichs zu erfassen
-    const requiredHeightPx = innerCard.scrollHeight;
-
-    // 3. Gridstack Zellen-Metriken
-    const cellHeight = dashboardGrid.getCellHeight();
-    const margin = dashboardGrid.getOpts().margin || 20;
-
-    // 4. Berechnung der benötigten Rows (h)
-    // Wir addieren einen kleinen Puffer (10px) für Padding-Unterschiede
-    const newH = Math.ceil((requiredHeightPx + 10) / (cellHeight + margin));
-
-    // 5. Update ausführen
-    dashboardGrid.update(gridItem, { h: newH });
-    
-    // 6. Zurück auf 100%, damit die Card-Klasse das Gridstack-Item wieder voll ausfüllt
-    innerCard.style.height = '100%';
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();

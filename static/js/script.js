@@ -1047,14 +1047,6 @@ async function loadForecast() {
            }
        }
    });
-   // 1. Sicherstellen, dass die Details am Anfang ausgeblendet sind
-   document.getElementById("shapDetailCard").style.display = "none";
-
-   // 2. WICHTIG: Die Karte sofort an den Inhalt (Global SHAP etc.) anpassen
-   // Ein kleines Delay hilft, damit das Chart fertig gerendert ist
-   setTimeout(() => {
-       resizeForecastCardToFit();
-   }, 200);
 }
 
 async function loadFeatureImportance() {
@@ -1161,19 +1153,16 @@ function showShapDetails(point) {
    const container = document.getElementById("shapForcePlot");
 
    // ===== ResizeObserver nur einmal registrieren =====
-   const cardItem = document.getElementById("card-forecast");
-   if (!cardItem._resizeObserverAttached) {
+   if (!container._resizeObserverAttached) {
+
        const observer = new ResizeObserver(() => {
-           // Wir nutzen einen winzigen Delay, damit Gridstack erst fertig zeichnet
-           clearTimeout(window._shapResizeTimer);
-           window._shapResizeTimer = setTimeout(() => {
-               if (window._lastShapPoint) {
-                   showShapDetails(window._lastShapPoint);
-               }
-           }, 50); 
+           if (window._lastShapPoint) {
+               showShapDetails(window._lastShapPoint);
+           }
        });
-       observer.observe(cardItem);
-       cardItem._resizeObserverAttached = true;
+
+       observer.observe(container);
+       container._resizeObserverAttached = true;
    }
 
    container.innerHTML = "";
@@ -1181,7 +1170,6 @@ function showShapDetails(point) {
    container.style.display = "flex";
    container.style.alignItems = "center";
    container.style.justifyContent = "center";
-   container.style.width = "100%";
    container.style.height = "100px";
    container.style.overflow = "visible";
 
@@ -1415,5 +1403,4 @@ function showShapDetails(point) {
    }
 
    document.getElementById("seasonInterpretation").innerText = text;
-   resizeForecastCardToFit();
 }

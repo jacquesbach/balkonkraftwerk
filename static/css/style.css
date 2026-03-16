@@ -195,12 +195,13 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; 
-    height: 100%;
-    box-sizing: border-box;
-    overflow: hidden; /* Verhindert das Auslaufen des Inhalts während der Animation */
-    transition: height 0.3s ease; /* Macht das Aufklappen geschmeidig */
+    justify-content: center;
   }
+
+  background: var(--card-bg);
+
+  /* WICHTIG: Ändere 'center' auf 'flex-start' */
+
 
   .card-gradient {
     background: var(--gradient);
