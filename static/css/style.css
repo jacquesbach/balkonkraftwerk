@@ -162,11 +162,12 @@
     margin-left: -20px;
     margin-right: -20px;
   }
-  
+
   .grid-stack-item-content {
-    overflow-x: hidden;
-    overflow-y: auto;
-    overflow: visible !important;
+    xoverflow-x: hidden;
+    xoverflow-y: auto;
+    xoverflow: visible !important;
+    overflow: hidden;
     background: transparent !important;
     box-shadow: none !important;
   }
