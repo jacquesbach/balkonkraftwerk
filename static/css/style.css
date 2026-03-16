@@ -162,14 +162,15 @@
     margin-left: -20px;
     margin-right: -20px;
   }
-
+  
   .grid-stack-item-content {
-    height: 100%;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overflow: visible !important;
     background: transparent !important;
     box-shadow: none !important;
   }
-
+  
   .edit-mode .grid-stack-item-content {
     cursor: grab;
     border: 1px dashed var(--accent);
@@ -195,11 +196,6 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    height: 100%;
-  }
-  
-  .card canvas {
-    width: 100% !important;
   }
 
   .card-gradient {
@@ -207,7 +203,7 @@
     color: white;
     box-shadow: 0 15px 35px rgba(255, 75, 114, 0.25);
   }
-  
+
   .card-gradient .label {
     color: rgba(255, 255, 255, 0.85);
     font-size: 0.9em;
