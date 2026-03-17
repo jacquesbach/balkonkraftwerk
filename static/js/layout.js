@@ -85,54 +85,60 @@ async function resetDatabaseLayout() {
     }
 }
 
-function initAutoResizeForCard(cardId) {
+function initAutoHeightGrid() {
 
-    const gridItem = document.getElementById(cardId);
-    const content = gridItem.querySelector(".card");
+    const items = document.querySelectorAll(".grid-stack-item.auto-height");
 
-    if (!gridItem || !content) return;
+    items.forEach(item => {
 
-    let resizeTimeout;
+        const content = item.querySelector(".grid-stack-item-content");
+        const card = content?.querySelector(".card");
 
-    const observer = new ResizeObserver(() => {
+        if (!content || !card) return;
 
-        // kleines Debounce (wichtig wegen Chart.js Render-Zyklen)
-        clearTimeout(resizeTimeout);
+        let resizeTimeout;
 
-        resizeTimeout = setTimeout(() => {
+        const resize = () => {
 
-            const newHeightPx = content.scrollHeight;
+            const rect = card.getBoundingClientRect();
+            const heightPx = rect.height;
 
             const cellHeight = dashboardGrid.getCellHeight();
-            const newGridHeight = Math.ceil(newHeightPx / cellHeight);
+            const newH = Math.ceil(heightPx / cellHeight);
 
-            dashboardGrid.update(gridItem, { h: newGridHeight });
+            // 🔥 Nur updaten wenn nötig (sehr wichtig!)
+            if (item.gridstackNode.h !== newH) {
+                dashboardGrid.update(item, { h: newH });
+            }
+        };
 
-        }, 80); // Sweet Spot
+        const observer = new ResizeObserver(() => {
 
+            clearTimeout(resizeTimeout);
+
+            resizeTimeout = setTimeout(() => {
+                resize();
+            }, 60); // debounce für Chart.js
+
+        });
+
+        observer.observe(card);
+
+        // 👉 initial nach Render
+        setTimeout(resize, 300);
+
+        // 👉 fallback (Fonts / async Layout)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(resize);
+        });
     });
-
-    observer.observe(content);
-}
-
-function forceGridResize(cardId) {
-    const gridItem = document.getElementById(cardId);
-    const content = gridItem.querySelector(".card");
-
-    if (!gridItem || !content) return;
-
-    const newHeightPx = content.scrollHeight;
-    const cellHeight = dashboardGrid.getCellHeight();
-    const newGridHeight = Math.ceil(newHeightPx / cellHeight);
-
-    dashboardGrid.update(gridItem, { h: newGridHeight });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
     await loadLayout(); // Wartet, bis Boxen aus DB oder LocalStorage da sind
-    initAutoResizeForCard("card-forecast");
+    initAutoHeightGrid();
 
     // --- PHASE 2: Startwerte für Datumsfelder setzen ---
     const t = new Date().toISOString().split('T')[0];

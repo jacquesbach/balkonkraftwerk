@@ -1142,7 +1142,7 @@ async function loadForecast() {
            },
            animation: {
             onComplete: () => {
-                forceGridResize("card-forecast");
+                window.dispatchEvent(new Event('resize'));
             }
            }
        }
@@ -1178,7 +1178,7 @@ async function loadFeatureImportance() {
                },
                animation: {
                 onComplete: () => {
-                    forceGridResize("card-forecast");
+                    window.dispatchEvent(new Event('resize'));
                 }
                }
            }
@@ -1221,7 +1221,7 @@ async function loadGlobalShap() {
                },
                animation: {
                 onComplete: () => {
-                    forceGridResize("card-forecast");
+                    window.dispatchEvent(new Event('resize'));
                 }
                }
            }
