@@ -161,6 +161,10 @@
   .grid-stack {
     margin-left: -20px;
     margin-right: -20px;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
   }
 
   .grid-stack-item-content {
