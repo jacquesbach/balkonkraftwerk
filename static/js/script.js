@@ -1139,7 +1139,7 @@ async function loadForecast() {
                    const index = points[0].index;
                    showShapDetails(forecast[index]);
                }
-           }
+           },
            animation: {
             onComplete: () => {
                 forceGridResize("card-forecast");
@@ -1175,7 +1175,7 @@ async function loadFeatureImportance() {
                    legend: {
                        display: false
                    }
-               }
+               },
                animation: {
                 onComplete: () => {
                     forceGridResize("card-forecast");
@@ -1218,7 +1218,7 @@ async function loadGlobalShap() {
                    legend: {
                        display: false
                    }
-               }
+               },
                animation: {
                 onComplete: () => {
                     forceGridResize("card-forecast");
