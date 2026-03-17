@@ -85,10 +85,41 @@ async function resetDatabaseLayout() {
     }
 }
 
+function initAutoResizeForCard(cardId) {
+
+    const gridItem = document.getElementById(cardId);
+    const content = gridItem.querySelector(".card");
+
+    if (!gridItem || !content) return;
+
+    let resizeTimeout;
+
+    const observer = new ResizeObserver(() => {
+
+        // kleines Debounce (wichtig wegen Chart.js Render-Zyklen)
+        clearTimeout(resizeTimeout);
+
+        resizeTimeout = setTimeout(() => {
+
+            const newHeightPx = content.scrollHeight;
+
+            const cellHeight = dashboardGrid.getCellHeight();
+            const newGridHeight = Math.ceil(newHeightPx / cellHeight);
+
+            dashboardGrid.update(gridItem, { h: newGridHeight });
+
+        }, 80); // Sweet Spot
+
+    });
+
+    observer.observe(content);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
     await loadLayout(); // Wartet, bis Boxen aus DB oder LocalStorage da sind
+    initAutoResizeForCard("card-forecast");
 
     // --- PHASE 2: Startwerte für Datumsfelder setzen ---
     const t = new Date().toISOString().split('T')[0];

@@ -168,8 +168,9 @@
   }
 
   .grid-stack-item-content {
-    overflow-x: hidden;
-    overflow-y: auto;
+    xoverflow-x: hidden;
+    xoverflow-y: auto;
+    overflow: visible !important;
     background: transparent !important;
     box-shadow: none !important;
   }
