@@ -1140,11 +1140,6 @@ async function loadForecast() {
                    showShapDetails(forecast[index]);
                }
            },
-           animation: {
-            onComplete: () => {
-                window.dispatchEvent(new Event('resize'));
-            }
-           }
        }
    });
 }
@@ -1176,11 +1171,6 @@ async function loadFeatureImportance() {
                        display: false
                    }
                },
-               animation: {
-                onComplete: () => {
-                    window.dispatchEvent(new Event('resize'));
-                }
-               }
            }
        });
 
@@ -1219,11 +1209,6 @@ async function loadGlobalShap() {
                        display: false
                    }
                },
-               animation: {
-                onComplete: () => {
-                    window.dispatchEvent(new Event('resize'));
-                }
-               }
            }
        });
 

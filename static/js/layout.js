@@ -85,60 +85,10 @@ async function resetDatabaseLayout() {
     }
 }
 
-function initAutoHeightGrid() {
-
-    const items = document.querySelectorAll(".grid-stack-item.auto-height");
-
-    items.forEach(item => {
-
-        const content = item.querySelector(".grid-stack-item-content");
-        const card = content?.querySelector(".card");
-
-        if (!content || !card) return;
-
-        let resizeTimeout;
-
-        const resize = () => {
-
-            const rect = card.getBoundingClientRect();
-            const heightPx = rect.height;
-
-            const cellHeight = dashboardGrid.getCellHeight();
-            const newH = Math.ceil(heightPx / cellHeight);
-
-            // 🔥 Nur updaten wenn nötig (sehr wichtig!)
-            if (item.gridstackNode.h !== newH) {
-                dashboardGrid.update(item, { h: newH });
-            }
-        };
-
-        const observer = new ResizeObserver(() => {
-
-            clearTimeout(resizeTimeout);
-
-            resizeTimeout = setTimeout(() => {
-                resize();
-            }, 60); // debounce für Chart.js
-
-        });
-
-        observer.observe(card);
-
-        // 👉 initial nach Render
-        setTimeout(resize, 300);
-
-        // 👉 fallback (Fonts / async Layout)
-        requestAnimationFrame(() => {
-            requestAnimationFrame(resize);
-        });
-    });
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
     await loadLayout(); // Wartet, bis Boxen aus DB oder LocalStorage da sind
-    initAutoHeightGrid();
 
     // --- PHASE 2: Startwerte für Datumsfelder setzen ---
     const t = new Date().toISOString().split('T')[0];
@@ -179,9 +129,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     setInterval(() => { if (typeof fetchData === "function") fetchData(); }, 60000);
     setInterval(() => { if (typeof updatePeaks === "function") updatePeaks(); }, 60000);
     setInterval(() => { if (typeof checkLoadingStatus === "function") checkLoadingStatus(); }, 500);
-
-    // WICHTIG: Einmal kräftig schütteln, damit Charts ihre Größe im neuen Grid finden
-    setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-    }, 200); 
+    
 });
