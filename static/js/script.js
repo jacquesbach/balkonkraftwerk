@@ -953,10 +953,7 @@ function showShapError(message) {
 }
 
 function getTodayForecastPoint(forecastData) {
-
     const todayStr = new Date().toISOString().split("T")[0];
-    // → ergibt z.B. "2026-03-17"
-
     return forecastData.find(d => d.date === todayStr);
 }
 
@@ -1150,7 +1147,7 @@ async function loadForecast() {
    const todayPoint = getTodayForecastPoint(data.forecast) || data.forecast[0];
    if (todayPoint) {
     showShapDetails(todayPoint);
-    document.getElementById("card-shap")?.style.display = "block";
+    document.getElementById("card-shap-details")?.style.display = "block";
     };
 }
 
