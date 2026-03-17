@@ -256,8 +256,14 @@
               </div>
               
               <canvas id="forecastChart" height="240"></canvas>
-              
-              <div id="shapDetailCard" style="display:none; margin-top:25px;">
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-stack-item" id="card-forecast" gs-w="12" gs-h="8">
+          <div class="grid-stack-item-content">
+            <div class="card card-light" style="height: 100%; box-sizing: border-box;">
+              <div id="shapDetailCard" style="display:none;">
                 <div class="label">Prognose-Details</div>
                 <div id="shapDetailkWh" style="font-size:0.9em; margin-bottom:15px;"></div>
                 <div id="shapForcePlot" style="display:flex; align-items:center; height:42px; overflow:hidden; margin-bottom:20px;"></div>
@@ -280,16 +286,26 @@
                   <div id="seasonInterpretation" style="font-size:0.9em; color:var(--text-muted); line-height:1.5;"></div>
                 </div>
               </div>
-              
+            </div>
+          </div>
+        </div>
+        <div class="grid-stack-item" id="card-forecast" gs-w="12" gs-h="8">
+          <div class="grid-stack-item-content">
+            <div class="card card-light" style="height: 100%; box-sizing: border-box;">
               <div style="margin-top:30px;">
                 <div class="label" style="margin-bottom:10px;">Global SHAP</div>
                 <canvas id="globalShapChart" height="160"></canvas>
               </div>
+            </div>
+          </div>
+        </div>
+        <div class="grid-stack-item" id="card-forecast" gs-w="12" gs-h="8">
+          <div class="grid-stack-item-content">
+            <div class="card card-light" style="height: 100%; box-sizing: border-box;">
               <div style="margin-top:30px;">
                 <div class="label" style="margin-bottom:10px;">Feature Importance</div>
                 <canvas id="featureImportanceChart" height="160"></canvas>
               </div>
-              
             </div>
           </div>
         </div>

@@ -936,11 +936,8 @@ function validateShapData(point) {
 }
 
 function showShapError(message) {
-
     const card = document.getElementById("shapDetailCard");
-
     card.style.display = "block";
-
     card.innerHTML = `
         <div style="
             padding:20px;
