@@ -170,8 +170,6 @@
   .grid-stack-item-content {
     overflow-x: hidden;
     overflow-y: auto;
-    overflow: visible !important;
-    overflow: hidden;
     background: transparent !important;
     box-shadow: none !important;
   }
@@ -200,7 +198,7 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: start;
   }
 
   .card-gradient {
