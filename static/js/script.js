@@ -1147,7 +1147,7 @@ async function loadForecast() {
    const todayPoint = getTodayForecastPoint(data.forecast) || data.forecast[0];
    if (todayPoint) {
     showShapDetails(todayPoint);
-    document.getElementById("card-shap-details")?.style.display = "block";
+    document.getElementById("shapDetailCard").style.display = "block";
     };
 }
 
