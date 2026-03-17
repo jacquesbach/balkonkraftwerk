@@ -868,6 +868,93 @@ function prettyFeatureName(key) {
    return featureNames[key] || key;
 }
 
+// =========================
+// 🔒 VALIDATION + ERROR UI
+// =========================
+
+function validateForecastData(forecast) {
+
+    if (!Array.isArray(forecast) || forecast.length === 0) {
+        return "Keine Forecast-Daten vorhanden";
+    }
+
+    for (const f of forecast) {
+
+        if (f.kwh_pred == null || isNaN(f.kwh_pred)) {
+            return "Ungültige Prognosewerte (kwh_pred fehlt)";
+        }
+
+        if (f.kwh_lower == null || f.kwh_upper == null) {
+            return "Unsicherheitsband unvollständig";
+        }
+
+        if (!f.date) {
+            return "Datum fehlt in Forecast";
+        }
+
+    }
+
+    return null;
+}
+
+function showForecastError(message) {
+
+    const canvas = document.getElementById("forecastChart");
+    const container = canvas.parentElement;
+
+    container.innerHTML = `
+        <div style="
+            padding:20px;
+            border-radius:12px;
+            background:#fee2e2;
+            color:#991b1b;
+            font-size:0.9em;
+        ">
+            ⚠️ Forecast Fehler:<br>
+            ${message}
+        </div>
+    `;
+}
+
+function validateShapData(point) {
+
+    if (!point) return "Kein Datenpunkt vorhanden";
+
+    if (!point.shap || typeof point.shap !== "object") {
+        return "SHAP-Werte fehlen";
+    }
+
+    if (Object.keys(point.shap).length === 0) {
+        return "SHAP-Daten sind leer";
+    }
+
+    if (point.kwh_pred == null) {
+        return "Prognosewert fehlt";
+    }
+
+    return null;
+}
+
+function showShapError(message) {
+
+    const card = document.getElementById("shapDetailCard");
+
+    card.style.display = "block";
+
+    card.innerHTML = `
+        <div style="
+            padding:20px;
+            border-radius:12px;
+            background:#fff3cd;
+            color:#856404;
+            font-size:0.9em;
+        ">
+            ⚠️ SHAP Fehler:<br>
+            ${message}
+        </div>
+    `;
+}
+
 async function loadForecast() {
 
    const response = await fetch("/api/forecast");
@@ -882,6 +969,14 @@ async function loadForecast() {
        console.warn("Keine Forecast Daten vorhanden");
        return;
    }
+
+   const validationError = validateForecastData(forecast);
+
+    if (validationError) {
+        console.error("Forecast Validation Error:", validationError, forecast);
+        showForecastError(validationError);
+        return;
+    }
 
    const totalKwh = forecast.reduce((sum, d) => sum + d.kwh_pred, 0);
    const totalEur = forecast.reduce((sum, d) => sum + d.eur_pred, 0);
@@ -1124,6 +1219,14 @@ async function loadGlobalShap() {
 
 
 function showShapDetails(point) {
+
+    const validationError = validateShapData(point);
+    
+    if (validationError) {
+        console.error("SHAP Validation Error:", validationError, point);
+        showShapError(validationError);
+        return;
+    }
 
    // ===== Punkt global merken für ResizeObserver =====
    window._lastShapPoint = point;
