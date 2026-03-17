@@ -115,6 +115,19 @@ function initAutoResizeForCard(cardId) {
     observer.observe(content);
 }
 
+function forceGridResize(cardId) {
+    const gridItem = document.getElementById(cardId);
+    const content = gridItem.querySelector(".card");
+
+    if (!gridItem || !content) return;
+
+    const newHeightPx = content.scrollHeight;
+    const cellHeight = dashboardGrid.getCellHeight();
+    const newGridHeight = Math.ceil(newHeightPx / cellHeight);
+
+    dashboardGrid.update(gridItem, { h: newGridHeight });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
