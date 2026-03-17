@@ -164,9 +164,9 @@
   }
 
   .grid-stack-item-content {
-    xoverflow-x: hidden;
-    xoverflow-y: auto;
-    xoverflow: visible !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overflow: visible !important;
     overflow: hidden;
     background: transparent !important;
     box-shadow: none !important;
