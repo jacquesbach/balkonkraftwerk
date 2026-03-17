@@ -26,7 +26,7 @@ async function checkLoadingStatus() {
 }
 
 async function unlockAdmin() {
-    const pw = prompt("Passwort zur Anpassung des Stromtarifs & Layouts:");
+    const pw = prompt("Passwort zur Administration:");
     if (!pw) return;
 
     const res = await fetch('/api/auth', {
@@ -1221,7 +1221,7 @@ async function loadGlobalShap() {
 function showShapDetails(point) {
 
     const validationError = validateShapData(point);
-    
+
     if (validationError) {
         console.error("SHAP Validation Error:", validationError, point);
         showShapError(validationError);
