@@ -1051,11 +1051,22 @@ async function loadForecast() {
                 borderColor: '#ef4444',
                 backgroundColor: '#ef4444',
                 tension: 0.3,
-                pointRadius: 6,
+                pointRadius: (ctx) => {
+                    return ctx.dataIndex === activeForecastIndex ? 8 : 6;
+                },
                 pointHoverRadius: 10,
                 hitRadius: 20,
+                pointBackgroundColor: (ctx) => {
+                    return ctx.dataIndex === activeForecastIndex
+                        ? '#ffffff' 
+                        : '#ef4444';
+                },
+                pointBorderColor: '#ef4444',
+                pointBorderWidth: (ctx) => {
+                    return ctx.dataIndex === activeForecastIndex ? 3 : 0;
+                },
                 fill: false
-            }
+            },
         ]
        },
        options: {
@@ -1152,11 +1163,26 @@ async function loadForecast() {
                    true
                );
                if (points.length) {
-                   const index = points[0].index;
-                   showShapDetails(forecast[index]);
-                   setActivePoint(window.forecastChartInstance, index);
-               }
+                const index = points[0].index;
+                showShapDetails(forecast[index]);
+                activeForecastIndex = index;
+                setActivePoint(chart, index);
+                }
            },
+           onHover: (event, elements, chart) => {
+            if (elements.length) {
+                const index = elements[0].index;
+        
+                chart.setActiveElements([{
+                    datasetIndex: 2,
+                    index: index
+                }]);
+        
+                chart.update();
+            } else {
+                setActivePoint(chart, activeForecastIndex);
+            }
+        },
        }
    });
    const todayPoint = getTodayForecastPoint(data.forecast) || data.forecast[0];
@@ -1164,9 +1190,7 @@ async function loadForecast() {
     showShapDetails(todayPoint);
     document.getElementById("shapDetailCard").style.display = "block";
     const todayIndex = forecast.findIndex(f => f.date === todayPoint.date);
-    setTimeout(() => {
-            setActivePoint(window.forecastChartInstance, todayIndex);
-        }, 100);
+    setActivePoint(window.forecastChartInstance, todayIndex);
     };
 }
 
