@@ -78,7 +78,11 @@ def init_db():
     
     # 5. User Settings Tabelle
     c.execute('''CREATE TABLE IF NOT EXISTS user_settings 
-                 (key TEXT PRIMARY KEY, value TEXT)''')
+                (key TEXT PRIMARY KEY, value TEXT)''')
+    c.execute('''INSERT OR IGNORE INTO user_settings 
+              (key, value) VALUES ('removed_cards', '[]')''')
+    c.execute('''INSERT OR IGNORE INTO user_settings 
+              (key, value) VALUES ('dashboard_layout', NULL)''')
             
     conn.commit()
     conn.close()
