@@ -1055,22 +1055,20 @@ async function loadForecast() {
                  borderColor: '#ef4444',
                  backgroundColor: '#ef4444',
                  tension: 0.3,
- 
                  pointRadius: (ctx) => {
                      return ctx.dataIndex === appState.activeIndex ? 8 : 6;
                  },
                  pointHoverRadius: 10,
                  hitRadius: 20,
                  pointBackgroundColor: (ctx) => {
-                     return ctx.dataIndex === appState.activeIndex
-                         ? '#ffffff' 
-                         : '#ef4444';
-                 },
-                 pointBorderColor: '#ef4444',
-                 pointBorderWidth: (ctx) => {
-                     return ctx.dataIndex === appState.activeIndex ? 3 : 0;
-                 },
- 
+                    if (ctx.dataIndex === appState.activeIndex) return '#ffffff';
+                    return '#ef4444';
+                },
+                pointBorderWidth: (ctx) => {
+                    if (ctx.dataIndex === appState.activeIndex) return 3;
+                    return 0;
+                },
+                 pointBorderColor: '#ef4444', 
                  fill: false
              },
          ]
