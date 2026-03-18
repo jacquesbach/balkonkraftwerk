@@ -732,7 +732,11 @@ document.getElementById("heatmapYearSelect")
 
 document.addEventListener("DOMContentLoaded", initHeatmapYears);
 
+let heatmapInitialized = false;
+
 async function initHourlyHeatmap() {
+    if (heatmapInitialized) return;
+    heatmapInitialized = true;
     const res = await fetch("/api/heatmap_hourly");
     const data = await res.json();
 
