@@ -41,6 +41,9 @@ async function unlockAdmin() {
         document.getElementById('unlockBtn').style.display = 'none';
         document.getElementById('adminArea').style.display = 'flex';
         
+        injectDeleteButtons();
+        toggleDeleteButtons(true);
+        
         if (dashboardGrid) {
             // Grid bearbeitbar machen
             dashboardGrid.setStatic(false); 
@@ -48,6 +51,7 @@ async function unlockAdmin() {
         }
 
         loadTariffs();
+        updateAdminCardList();
     } else {
         alert("Falsches Passwort!");
     }
@@ -57,9 +61,10 @@ function closeAdmin() {
     currentPw = "";
     document.getElementById('adminArea').style.display = 'none';
     document.getElementById('unlockBtn').style.display = 'block';
-    
+
+    toggleDeleteButtons(false);
+
     if (dashboardGrid) {
-        // Grid wieder für alle sperren
         dashboardGrid.setStatic(true); 
         document.getElementById('dashboard-grid').classList.remove('edit-mode');
     }

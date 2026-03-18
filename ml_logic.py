@@ -60,8 +60,8 @@ def build_training_data():
 def train_model():
     X, y = build_training_data()
     # Da wir mehr Features haben, sollten wir mind. 10-15 Tage haben für ein erstes Training
-    if len(X) < 8: #15!!!
-        print(f"⚠️ Nicht genug Trainingsdaten ({len(X)}/8).") #15!!!
+    if len(X) < 15:
+        print(f"⚠️ Nicht genug Trainingsdaten ({len(X)}/15).")
         return None
 
     # Feature-Liste erweitert

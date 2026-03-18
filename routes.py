@@ -1098,3 +1098,39 @@ def save_layout():
     except Exception as e:
         print(f"Server-Fehler: {str(e)}")
         return jsonify({"error": "Interner Server Fehler", "details": str(e)}), 500
+
+@api_bp.route('/api/cards', methods=['GET'])
+def get_cards():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT value FROM user_settings WHERE key = 'removed_cards'")
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"removed": json.loads(row[0])}), 200
+    return jsonify({"removed": []}), 200
+
+
+@api_bp.route('/api/cards', methods=['POST'])
+def save_cards():
+    data = request.get_json()
+    password = data.get('pw')
+
+    if password != ADMIN_PASS:
+        return jsonify({"error": "Nicht autorisiert"}), 403
+
+    removed = data.get('removed', [])
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    c.execute(
+        "INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)",
+        ('removed_cards', json.dumps(removed))
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "ok"}), 200
