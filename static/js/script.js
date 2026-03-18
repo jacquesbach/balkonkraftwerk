@@ -965,7 +965,7 @@ function setActivePoint(chart, index) {
     if (!chart || index < 0) return;
     activeForecastIndex = index;
     chart.setActiveElements([{
-        datasetIndex: 0,
+        datasetIndex: 2,
         index: index
     }]);
     chart.update();
@@ -1154,7 +1154,7 @@ async function loadForecast() {
                if (points.length) {
                    const index = points[0].index;
                    showShapDetails(forecast[index]);
-                   setActivePoint(forecastChart, index);
+                   setActivePoint(window.forecastChartInstance, index);
                }
            },
        }
@@ -1163,9 +1163,10 @@ async function loadForecast() {
    if (todayPoint) {
     showShapDetails(todayPoint);
     document.getElementById("shapDetailCard").style.display = "block";
+    const todayIndex = forecast.findIndex(f => f.date === todayPoint.date);
     setTimeout(() => {
-        setActivePoint(forecastChart, 0);
-    }, 100);
+            setActivePoint(window.forecastChartInstance, todayIndex);
+        }, 100);
     };
 }
 
