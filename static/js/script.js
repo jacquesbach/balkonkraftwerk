@@ -957,6 +957,19 @@ function getTodayForecastPoint(forecastData) {
     return forecastData.find(d => d.date === todayStr);
 }
 
+function getForecastIndex(forecastData, targetDate) {
+    return forecastData.findIndex(d => d.date === targetDate);
+}
+
+function highlightForecastPoint(chart, index) {
+    if (!chart || index < 0) return;
+    chart.setActiveElements([{
+        datasetIndex: 0,
+        index: index
+    }]);
+    chart.update();
+}
+
 async function loadForecast() {
 
    const response = await fetch("/api/forecast");
@@ -1140,15 +1153,18 @@ async function loadForecast() {
                if (points.length) {
                    const index = points[0].index;
                    showShapDetails(forecast[index]);
+                   highlightForecastPoint(forecastChart, index);
+
                }
            },
        }
    });
    const todayPoint = getTodayForecastPoint(data.forecast) || data.forecast[0];
    if (todayPoint) {
-    showShapDetails(todayPoint);
-    document.getElementById("shapDetailCard").style.display = "block";
-    };
+       showShapDetails(todayPoint);
+       const index = getForecastIndex(data.forecast, todayPoint.date);
+       highlightForecastPoint(forecastChart, index);
+   }
 }
 
 async function loadFeatureImportance() {
