@@ -118,12 +118,12 @@ async function resetDatabaseLayout() {
 let removedCards = [];
 
 function removeCard(cardId) {
-    if (!currentPw) return alert("Nur im Admin-Modus möglich");
+    if (!currentPw) return;
 
     const el = document.getElementById(cardId);
     if (!el) return;
 
-    dashboardGrid.removeWidget(el);
+    el.style.display = 'none';
 
     if (!removedCards.includes(cardId)) {
         removedCards.push(cardId);
@@ -134,13 +134,10 @@ function removeCard(cardId) {
 }
 
 function restoreCard(cardId) {
-    if (!currentPw) return;
-
     const el = document.getElementById(cardId);
+    if (!el) return;
 
-    if (el) {
-        dashboardGrid.addWidget(el);
-    }
+    el.style.display = '';
 
     removedCards = removedCards.filter(id => id !== cardId);
 
@@ -156,7 +153,7 @@ async function loadRemovedCards() {
 
     removedCards.forEach(id => {
         const el = document.getElementById(id);
-        if (el) dashboardGrid.removeWidget(el);
+        if (el) el.style.display = 'none';
     });
 
     updateAdminCardList();
@@ -175,25 +172,41 @@ async function saveRemovedCards() {
     });
 }
 
+const ALL_CARDS = [
+    "card-total",
+    "card-live",
+    "card-main-chart",
+    "card-panel-chart",
+    "card-hourly-heatmap",
+    "card-donut-chart",
+    "card-records",
+    "card-roi",
+    "card-yearly-heatmap",
+    "card-forecast",
+    "card-shap-details",
+    "card-global-shap",
+    "card-feature-importance"
+];
+
 function updateAdminCardList() {
     const container = document.getElementById('cardManagerList');
     if (!container) return;
 
     container.innerHTML = '';
 
-    document.querySelectorAll('.grid-stack-item').forEach(el => {
-        const id = el.id;
+    ALL_CARDS.forEach(id => {
         const isRemoved = removedCards.includes(id);
 
         const row = document.createElement('div');
-
         row.style.display = 'flex';
         row.style.justifyContent = 'space-between';
         row.style.marginBottom = '6px';
 
         row.innerHTML = `
             <span>${id}</span>
-            <button onclick="${isRemoved ? `restoreCard('${id}')` : `removeCard('${id}')`}">
+            <button onclick="${isRemoved 
+                ? `restoreCard('${id}')` 
+                : `removeCard('${id}')`}">
                 ${isRemoved ? '➕' : '🗑️'}
             </button>
         `;
