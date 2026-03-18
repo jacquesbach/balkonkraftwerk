@@ -1171,21 +1171,24 @@ async function loadForecast() {
                  }
              },
  
-            onHover: (event, elements, chart) => {
-                 if (elements.length) {
-                     chart.setActiveElements([{
-                         datasetIndex: 2,
-                         index: elements[0].index
-                     }]);
-                     chart.update('none');
-                 } else {
-                     chart.setActiveElements([{
-                         datasetIndex: 2,
-                         index: appState.activeIndex
-                     }]);
-                     chart.update('none');
-                 }
-            },
+             onHover: (event, elements, chart) => {
+                if (elements.length) {
+                    const hoverIndex = elements[0].index;
+                    if (hoverIndex !== appState.activeIndex) {
+                        chart.setActiveElements([{
+                            datasetIndex: 2,
+                            index: hoverIndex
+                        }]);
+                        chart.update('none');
+                    }
+                } else {
+                    chart.setActiveElements([{
+                        datasetIndex: 2,
+                        index: appState.activeIndex
+                    }]);
+                    chart.update('none');
+                }
+            }
         }
     });
  
