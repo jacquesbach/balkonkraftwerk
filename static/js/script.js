@@ -1050,27 +1050,52 @@ async function loadForecast() {
                  backgroundColor: 'rgba(239,68,68,0.18)',
              },
              {
-                 label: 'Prognose',
-                 data: values,
-                 borderColor: '#ef4444',
-                 backgroundColor: '#ef4444',
-                 tension: 0.3,
-                 pointRadius: (ctx) => {
-                     return ctx.dataIndex === appState.activeIndex ? 8 : 6;
-                 },
-                 hitRadius: 20,
-                 pointHoverRadius: (ctx) => {
+                label: 'Prognose',
+                data: values,
+                borderColor: '#ef4444',
+                backgroundColor: '#ef4444',
+                tension: 0.3,
+            
+                // 🔴 STANDARD vs AKTIV
+                pointRadius: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? 8 : 6;
+                },
+            
+                pointBackgroundColor: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex
+                        ? '#ffffff'   // aktiv → weiß innen
+                        : '#ef4444';  // normal → rot
+                },
+            
+                pointBorderColor: '#ef4444',
+            
+                pointBorderWidth: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? 3 : 0;
+                },
+            
+                hitRadius: 20,
+            
+                // 🟡 HOVER LOGIK (WICHTIG!)
+                pointHoverRadius: (ctx) => {
                     return ctx.dataIndex === appState.activeIndex ? 8 : 10;
                 },
+            
                 pointHoverBackgroundColor: (ctx) => {
-                    return ctx.dataIndex === appState.activeIndex ? '#ffffff' : '#ffffff';
+                    return ctx.dataIndex === appState.activeIndex
+                        ? '#ffffff'   // aktiv → KEINE Änderung
+                        : '#ef4444';  // normal → bleibt rot
                 },
+            
+                pointHoverBorderColor: '#ef4444',
+            
                 pointHoverBorderWidth: (ctx) => {
-                    return ctx.dataIndex === appState.activeIndex ? 3 : 1;
+                    return ctx.dataIndex === appState.activeIndex
+                        ? 3   // aktiv → KEINE Änderung
+                        : 0;  // normal → kein Rand beim Hover
                 },
-                 pointBorderColor: '#ef4444', 
-                 fill: false
-             },
+            
+                fill: false
+            },
          ]
         },
         options: {
