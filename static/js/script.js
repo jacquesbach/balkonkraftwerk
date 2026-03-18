@@ -1058,15 +1058,15 @@ async function loadForecast() {
                  pointRadius: (ctx) => {
                      return ctx.dataIndex === appState.activeIndex ? 8 : 6;
                  },
-                 pointHoverRadius: 10,
                  hitRadius: 20,
-                 pointBackgroundColor: (ctx) => {
-                    if (ctx.dataIndex === appState.activeIndex) return '#ffffff';
-                    return '#ef4444';
+                 pointHoverRadius: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? 8 : 10;
                 },
-                pointBorderWidth: (ctx) => {
-                    if (ctx.dataIndex === appState.activeIndex) return 3;
-                    return 0;
+                pointHoverBackgroundColor: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? '#ffffff' : '#ffffff';
+                },
+                pointHoverBorderWidth: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? 3 : 1;
                 },
                  pointBorderColor: '#ef4444', 
                  fill: false
