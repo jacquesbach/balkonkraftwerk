@@ -972,6 +972,7 @@ function setActivePoint(chart, index) {
         datasetIndex: 2,
         index: index
     }]);
+    chart.data.datasets[2].data = [...chart.data.datasets[2].data];
     chart.update();
 }
 
@@ -1159,30 +1160,26 @@ async function loadForecast() {
                }
            },
            onClick: (event, elements, chart) => {
-               const points = chart.getElementsAtEventForMode(
-                   event,
-                   'index', {
-                       intersect: false
-                   },
-                   true
-               );
-               if (points.length) {
+            const points = chart.getElementsAtEventForMode(
+                event,
+                'index',
+                { intersect: false },
+                true
+            );
+            if (points.length) {
                 const index = points[0].index;
                 showShapDetails(forecast[index]);
-                activeForecastIndex = index;
                 setActivePoint(chart, index);
                 }
-           },
+            },
            onHover: (event, elements, chart) => {
             if (elements.length) {
                 const index = elements[0].index;
-        
                 chart.setActiveElements([{
                     datasetIndex: 2,
                     index: index
                 }]);
-        
-                chart.update();
+                chart.update('none');
             } else {
                 setActivePoint(chart, activeForecastIndex);
             }
