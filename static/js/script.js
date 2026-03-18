@@ -860,7 +860,11 @@ document.addEventListener("DOMContentLoaded", initHourlyHeatmap);
 // FORECAST JS
 // =========================
 
-let activeForecastIndex = 0; // Default = erster Punkt
+const appState = {
+    forecast: [],
+    activeIndex: 0,
+    chart: null
+};
 
 function prettyFeatureName(key) {
    const featureNames = {
@@ -965,235 +969,238 @@ function getTodayForecastPoint(forecastData) {
     return forecastData.find(d => d.date === todayStr);
 }
 
-function setActivePoint(chart, index) {
-    if (!chart || index < 0) return;
-    activeForecastIndex = index;
-    chart.setActiveElements([{
+function setActiveIndex(index) {
+    if (!appState.chart || index < 0) return;
+    appState.activeIndex = index;
+    appState.chart.setActiveElements([{
         datasetIndex: 2,
         index: index
     }]);
-    chart.data.datasets[2].data = [...chart.data.datasets[2].data];
-    chart.update();
+    appState.chart.update();
+    showShapDetails(appState.forecast[index]);
 }
 
 async function loadForecast() {
 
-   const response = await fetch("/api/forecast");
-   const data = await response.json();
-
-   console.log("Forecast API:", data);
-
-   const forecast = data.forecast || [];
-   const mae = data.mae || 0;
-
-   if (forecast.length === 0) {
-       console.warn("Keine Forecast Daten vorhanden");
-       return;
-   }
-
-   const validationError = validateForecastData(forecast);
-
-    if (validationError) {
-        console.error("Forecast Validation Error:", validationError, forecast);
-        showForecastError(validationError);
+    const response = await fetch("/api/forecast");
+    const data = await response.json();
+ 
+    console.log("Forecast API:", data);
+ 
+    const forecast = data.forecast || [];
+    const mae = data.mae || 0;
+ 
+    if (forecast.length === 0) {
+        console.warn("Keine Forecast Daten vorhanden");
         return;
     }
-
-   const totalKwh = forecast.reduce((sum, d) => sum + d.kwh_pred, 0);
-   const totalEur = forecast.reduce((sum, d) => sum + d.eur_pred, 0);
-
-   document.getElementById('forecast-total-kwh').innerHTML = `${totalKwh.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
-
-   document.getElementById("forecast-total-eur").innerHTML = `${totalEur.toFixed(2)}<span class="unit" style="color: var(--accent);">€</span>`;
-
-   document.getElementById("forecast-mae").innerHTML = `${mae.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
-
-
-   // =========================
-   // Forecast Chart mit Unsicherheitsband
-   // =========================
-
-   const labels = forecast.map(f => {
-       const parts = f.date.split("-");
-       return `${parts[2]}.${parts[1]}.${parts[0]}`;
-   });
-   const values = forecast.map(f => f.kwh_pred);
-
-   const lower = forecast.map(f => Number(f.kwh_lower));
-   const upper = forecast.map(f => Number(f.kwh_upper));
-
-   const ctx = document.getElementById("forecastChart");
-
-   if (window.forecastChartInstance) {
-       window.forecastChartInstance.destroy();
-   }
-
-   window.forecastChartInstance = new Chart(ctx, {
-       type: 'line',
-       data: {
-           labels: labels,
-           datasets: [
-            {
-                label: '90% Quantil',
-                data: upper,
-                borderColor: 'transparent',
-                pointRadius: 0,
-                fill: false,
-                tooltipHidden: true
-            },
-            {
-                label: 'Unsicherheitsband (80%)',
-                data: lower,
-                borderColor: 'transparent',
-                borderWidth: 0,
-                pointRadius: 0,
-                fill: '-1',
-                backgroundColor: 'rgba(239,68,68,0.18)',
-            },
-            {
-                label: 'Prognose',
-                data: values,
-                borderColor: '#ef4444',
-                backgroundColor: '#ef4444',
-                tension: 0.3,
-                pointRadius: (ctx) => {
-                    return ctx.dataIndex === activeForecastIndex ? 8 : 6;
-                },
-                pointHoverRadius: 10,
-                hitRadius: 20,
-                pointBackgroundColor: (ctx) => {
-                    return ctx.dataIndex === activeForecastIndex
-                        ? '#ffffff' 
-                        : '#ef4444';
-                },
-                pointBorderColor: '#ef4444',
-                pointBorderWidth: (ctx) => {
-                    return ctx.dataIndex === activeForecastIndex ? 3 : 0;
-                },
-                fill: false
-            },
-        ]
-       },
-       options: {
-           responsive: true,
-           interaction: {
-               mode: 'index',
-               intersect: false
-           },
-           plugins: {
-               legend: {
-                   display: false
-               },
-                tooltip: {
-                    enabled: false, // Standard deaktivieren
-                    external: function(context) {
-                        let tooltipEl = document.getElementById('forecast-chart-tooltip');
-
-                        if (!tooltipEl) {
-                            tooltipEl = document.createElement('div');
-                            tooltipEl.id = 'forecast-chart-tooltip';
-                            // Wir fügen deine CSS-Klasse hinzu!
-                            tooltipEl.classList.add('heatmap-tooltip');
-                            // Überschreiben einiger Werte für die Chart-Positionierung
-                            Object.assign(tooltipEl.style, {
-                                opacity: 1,
-                                pointerEvents: 'none',
-                                position: 'absolute',
-                                transition: 'opacity 0.15s ease',
-                                bottom: 'auto', // Reset von deinem CSS
-                                left: '0px',
-                                top: '0px',
-                                transform: 'translate(-50%, -110%)', // Zentriert über dem Punkt
-                                whiteSpace: 'nowrap',
-                                zIndex: '100'
-                            });
-                            document.body.appendChild(tooltipEl);
-                        }
-
-                        const tooltipModel = context.tooltip;
-                        if (tooltipModel.opacity === 0) {
-                            tooltipEl.style.opacity = 0;
-                            return;
-                        }
-
-                        if (tooltipModel.body) {
-                            const index = tooltipModel.dataPoints[0].dataIndex;
-                            const f = forecast[index];
-                            
-                            tooltipEl.innerHTML = `
-                                <div style="font-weight:700; margin-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.08); padding-bottom:4px; color: var(--text-dark);">
-                                    ${labels[index]}
-                                </div>
-                                
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-weight:600;">
-                                    <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block; color: #ef4444;"></span>
-                                    Prognose: ${f.kwh_pred.toFixed(3)} kWh
-                                </div>
-
-                                <div style="font-size: 0.9em; color: var(--text-dark); display: flex; flex-direction: column; gap: 2px; padding-left: 16px;">
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span style="width: 6px; height: 2px; background: #ccc; display: inline-block;"></span>
-                                        <span>Max (90% Quantil): <strong>${Number(f.kwh_upper).toFixed(2)} kWh</strong></span>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span style="width: 6px; height: 2px; background: #ccc; display: inline-block;"></span>
-                                        <span>Min (10% Quantil): <strong>${Number(f.kwh_lower).toFixed(2)} kWh</strong></span>
-                                    </div>
-                                </div>
-
-                                <div style="font-size: 0.75em; color: #999; font-style: italic; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #eee;">
-                                    80% Wahrscheinlichkeits-Intervall
-                                </div>
-                            `;
-                          }
-
-                        const position = context.chart.canvas.getBoundingClientRect();
-                        tooltipEl.style.opacity = 1;
-                        tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
-                        tooltipEl.style.top = position.top + window.pageYOffset + tooltipModel.caretY + 'px';
-                    }
-                }
-           },
-           scales: {
-               y: {
-                   beginAtZero: true
-               }
-           },
-           onClick: (event, elements, chart) => {
-            const points = chart.getElementsAtEventForMode(
-                event,
-                'index',
-                { intersect: false },
-                true
-            );
-            if (points.length) {
-                const index = points[0].index;
-                showShapDetails(forecast[index]);
-                setActivePoint(chart, index);
-                }
-            },
-           onHover: (event, elements, chart) => {
-            if (elements.length) {
-                const index = elements[0].index;
-                chart.setActiveElements([{
-                    datasetIndex: 2,
-                    index: index
-                }]);
-                chart.update('none');
-            } else {
-                setActivePoint(chart, activeForecastIndex);
-            }
+ 
+    const validationError = validateForecastData(forecast);
+ 
+     if (validationError) {
+         console.error("Forecast Validation Error:", validationError, forecast);
+         showForecastError(validationError);
+         return;
+     }
+ 
+    appState.forecast = forecast;
+ 
+    const totalKwh = forecast.reduce((sum, d) => sum + d.kwh_pred, 0);
+    const totalEur = forecast.reduce((sum, d) => sum + d.eur_pred, 0);
+ 
+    document.getElementById('forecast-total-kwh').innerHTML = `${totalKwh.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
+    document.getElementById("forecast-total-eur").innerHTML = `${totalEur.toFixed(2)}<span class="unit" style="color: var(--accent);">€</span>`;
+    document.getElementById("forecast-mae").innerHTML = `${mae.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
+ 
+    const labels = forecast.map(f => {
+        const parts = f.date.split("-");
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    });
+    const values = forecast.map(f => f.kwh_pred);
+ 
+    const lower = forecast.map(f => Number(f.kwh_lower));
+    const upper = forecast.map(f => Number(f.kwh_upper));
+ 
+    const ctx = document.getElementById("forecastChart");
+ 
+    if (window.forecastChartInstance) {
+        window.forecastChartInstance.destroy();
+    }
+ 
+    window.forecastChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+             {
+                 label: '90% Quantil',
+                 data: upper,
+                 borderColor: 'transparent',
+                 pointRadius: 0,
+                 fill: false,
+                 tooltipHidden: true
+             },
+             {
+                 label: 'Unsicherheitsband (80%)',
+                 data: lower,
+                 borderColor: 'transparent',
+                 borderWidth: 0,
+                 pointRadius: 0,
+                 fill: '-1',
+                 backgroundColor: 'rgba(239,68,68,0.18)',
+             },
+             {
+                 label: 'Prognose',
+                 data: values,
+                 borderColor: '#ef4444',
+                 backgroundColor: '#ef4444',
+                 tension: 0.3,
+ 
+                 pointRadius: (ctx) => {
+                     return ctx.dataIndex === appState.activeIndex ? 8 : 6;
+                 },
+                 pointHoverRadius: 10,
+                 hitRadius: 20,
+                 pointBackgroundColor: (ctx) => {
+                     return ctx.dataIndex === appState.activeIndex
+                         ? '#ffffff' 
+                         : '#ef4444';
+                 },
+                 pointBorderColor: '#ef4444',
+                 pointBorderWidth: (ctx) => {
+                     return ctx.dataIndex === appState.activeIndex ? 3 : 0;
+                 },
+ 
+                 fill: false
+             },
+         ]
         },
-       }
-   });
-   const todayPoint = getTodayForecastPoint(data.forecast) || data.forecast[0];
-   if (todayPoint) {
-    showShapDetails(todayPoint);
-    document.getElementById("shapDetailCard").style.display = "block";
-    const todayIndex = forecast.findIndex(f => f.date === todayPoint.date);
-    setActivePoint(window.forecastChartInstance, todayIndex);
-    };
-}
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                 tooltip: {
+                     enabled: false,
+                     external: function(context) {
+                         let tooltipEl = document.getElementById('forecast-chart-tooltip');
+ 
+                         if (!tooltipEl) {
+                             tooltipEl = document.createElement('div');
+                             tooltipEl.id = 'forecast-chart-tooltip';
+                             tooltipEl.classList.add('heatmap-tooltip');
+                             Object.assign(tooltipEl.style, {
+                                 opacity: 1,
+                                 pointerEvents: 'none',
+                                 position: 'absolute',
+                                 transition: 'opacity 0.15s ease',
+                                 bottom: 'auto',
+                                 left: '0px',
+                                 top: '0px',
+                                 transform: 'translate(-50%, -110%)',
+                                 whiteSpace: 'nowrap',
+                                 zIndex: '100'
+                             });
+                             document.body.appendChild(tooltipEl);
+                         }
+ 
+                         const tooltipModel = context.tooltip;
+                         if (tooltipModel.opacity === 0) {
+                             tooltipEl.style.opacity = 0;
+                             return;
+                         }
+ 
+                         if (tooltipModel.body) {
+                             const index = tooltipModel.dataPoints[0].dataIndex;
+                             const f = forecast[index];
+                             
+                             tooltipEl.innerHTML = `
+                                 <div style="font-weight:700; margin-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.08); padding-bottom:4px; color: var(--text-dark);">
+                                     ${labels[index]}
+                                 </div>
+                                 
+                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-weight:600;">
+                                     <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block; color: #ef4444;"></span>
+                                     Prognose: ${f.kwh_pred.toFixed(3)} kWh
+                                 </div>
+ 
+                                 <div style="font-size: 0.9em; color: var(--text-dark); display: flex; flex-direction: column; gap: 2px; padding-left: 16px;">
+                                     <div style="display: flex; align-items: center; gap: 6px;">
+                                         <span style="width: 6px; height: 2px; background: #ccc;"></span>
+                                         <span>Max (90% Quantil): <strong>${Number(f.kwh_upper).toFixed(2)} kWh</strong></span>
+                                     </div>
+                                     <div style="display: flex; align-items: center; gap: 6px;">
+                                         <span style="width: 6px; height: 2px; background: #ccc;"></span>
+                                         <span>Min (10% Quantil): <strong>${Number(f.kwh_lower).toFixed(2)} kWh</strong></span>
+                                     </div>
+                                 </div>
+ 
+                                 <div style="font-size: 0.75em; color: #999; font-style: italic; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #eee;">
+                                     80% Wahrscheinlichkeits-Intervall
+                                 </div>
+                             `;
+                           }
+ 
+                         const position = context.chart.canvas.getBoundingClientRect();
+                         tooltipEl.style.opacity = 1;
+                         tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
+                         tooltipEl.style.top = position.top + window.pageYOffset + tooltipModel.caretY + 'px';
+                     }
+                 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+ 
+            onClick: (event, elements, chart) => {
+                 const points = chart.getElementsAtEventForMode(
+                     event,
+                     'index',
+                     { intersect: false },
+                     true
+                 );
+                 if (points.length) {
+                     setActiveIndex(points[0].index);
+                 }
+             },
+ 
+            onHover: (event, elements, chart) => {
+                 if (elements.length) {
+                     chart.setActiveElements([{
+                         datasetIndex: 2,
+                         index: elements[0].index
+                     }]);
+                     chart.update('none');
+                 } else {
+                     chart.setActiveElements([{
+                         datasetIndex: 2,
+                         index: appState.activeIndex
+                     }]);
+                     chart.update('none');
+                 }
+            },
+        }
+    });
+ 
+    appState.chart = window.forecastChartInstance;
+ 
+    const todayPoint = getTodayForecastPoint(forecast) || forecast[0];
+ 
+    if (todayPoint) {
+         const todayIndex = forecast.findIndex(f => f.date === todayPoint.date);
+ 
+         document.getElementById("shapDetailCard").style.display = "block";
+ 
+         setActiveIndex(todayIndex);
+    }
+ }
 
 async function loadFeatureImportance() {
 
