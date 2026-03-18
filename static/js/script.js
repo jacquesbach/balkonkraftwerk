@@ -852,6 +852,12 @@ async function loadHourlyHeatmap(month) {
 // Beim Laden der Seite aufrufen
 document.addEventListener("DOMContentLoaded", initHourlyHeatmap);
 
+// =========================
+// FORECAST JS
+// =========================
+
+let activeForecastIndex = 0; // Default = erster Punkt
+
 function prettyFeatureName(key) {
    const featureNames = {
        clouds: "Mittlerer Bewölkungsgrad",
@@ -868,9 +874,7 @@ function prettyFeatureName(key) {
    return featureNames[key] || key;
 }
 
-// =========================
 // 🔒 VALIDATION + ERROR UI
-// =========================
 
 function validateForecastData(forecast) {
 
@@ -957,12 +961,9 @@ function getTodayForecastPoint(forecastData) {
     return forecastData.find(d => d.date === todayStr);
 }
 
-function getForecastIndex(forecastData, targetDate) {
-    return forecastData.findIndex(d => d.date === targetDate);
-}
-
-function highlightForecastPoint(chart, index) {
+function setActivePoint(chart, index) {
     if (!chart || index < 0) return;
+    activeForecastIndex = index;
     chart.setActiveElements([{
         datasetIndex: 0,
         index: index
@@ -1153,18 +1154,19 @@ async function loadForecast() {
                if (points.length) {
                    const index = points[0].index;
                    showShapDetails(forecast[index]);
-                   highlightForecastPoint(forecastChart, index);
-
+                   setActivePoint(forecastChart, index);
                }
            },
        }
    });
    const todayPoint = getTodayForecastPoint(data.forecast) || data.forecast[0];
    if (todayPoint) {
-       showShapDetails(todayPoint);
-       const index = getForecastIndex(data.forecast, todayPoint.date);
-       highlightForecastPoint(forecastChart, index);
-   }
+    showShapDetails(todayPoint);
+    document.getElementById("shapDetailCard").style.display = "block";
+    setTimeout(() => {
+        setActivePoint(forecastChart, 0);
+    }, 100);
+    };
 }
 
 async function loadFeatureImportance() {
