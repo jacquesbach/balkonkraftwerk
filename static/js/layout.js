@@ -4,7 +4,7 @@ let currentPw = "";
 // 1. Grid initialisieren
 function initGridstack() {
     dashboardGrid = GridStack.init({
-        cellHeight: 110,
+        cellHeight: 50,
         margin: 20,
         animate: true,
         staticGrid: true,
@@ -129,5 +129,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     setInterval(() => { if (typeof fetchData === "function") fetchData(); }, 60000);
     setInterval(() => { if (typeof updatePeaks === "function") updatePeaks(); }, 60000);
     setInterval(() => { if (typeof checkLoadingStatus === "function") checkLoadingStatus(); }, 500);
-    
+
 });
