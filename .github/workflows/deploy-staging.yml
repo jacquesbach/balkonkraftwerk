@@ -16,6 +16,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/balkonkraftwerk-staging
-            git pull origin dev
+            git fetch origin dev
+            git reset --hard origin/dev
             sudo systemctl restart balkonkraftwerk-staging
-            echo "Staging Update erfolgreich. Test-App läuft auf Port 5001!"
+            echo "Staging hart auf Stand von 'dev' gesetzt. Port 5001 läuft!"

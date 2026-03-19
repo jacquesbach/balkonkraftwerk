@@ -16,6 +16,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/
-            git pull origin main
+            # Verhindert Divergenz-Fehler durch striktes Fast-Forward
+            git pull origin main --ff-only
             sudo systemctl restart balkonkraftwerk
-            echo "Update erfolgreich. App wurde neu gestartet!"
+            echo "Produktiv-Update via Fast-Forward erfolgreich. App läuft!"

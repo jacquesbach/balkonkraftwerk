@@ -2,7 +2,6 @@ let myChart;
 let panelChart;
 let dcDonutChart;
 let activeDonutIndex = null; // null = Gesamtansicht, 0 = Panel 1, 1 = Panel 2
-let currentPw = "";
 
 const ROI_DEBUG_FORCE_COMPLETE = false;
 
@@ -27,30 +26,43 @@ async function checkLoadingStatus() {
 }
 
 async function unlockAdmin() {
-   const pw = prompt("Passwort zur Anpassung des Stromtarifs:");
-   if (!pw) return;
-   const res = await fetch('/api/auth', {
-       method: 'POST',
-       headers: {
-           'Content-Type': 'application/json'
-       },
-       body: JSON.stringify({
-           pw: pw
-       })
-   });
-   if (res.ok) {
-       currentPw = pw;
-       document.getElementById('unlockBtn').style.display = 'none';
-       document.getElementById('adminArea').style.display = 'flex';
-       loadTariffs();
-   } else {
-       alert("Falsches Passwort!");
-   }
+    const pw = prompt("Passwort zur Administration:");
+    if (!pw) return;
+
+    const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pw: pw })
+    });
+
+    if (res.ok) {
+        currentPw = pw;
+        
+        document.getElementById('unlockBtn').style.display = 'none';
+        document.getElementById('adminArea').style.display = 'flex';
+        
+        if (dashboardGrid) {
+            // Grid bearbeitbar machen
+            dashboardGrid.setStatic(false); 
+            document.getElementById('dashboard-grid').classList.add('edit-mode');
+        }
+
+        loadTariffs();
+    } else {
+        alert("Falsches Passwort!");
+    }
 }
 
 function closeAdmin() {
-   document.getElementById('adminArea').style.display = 'none';
-   document.getElementById('unlockBtn').style.display = 'block';
+    currentPw = "";
+    document.getElementById('adminArea').style.display = 'none';
+    document.getElementById('unlockBtn').style.display = 'block';
+    
+    if (dashboardGrid) {
+        // Grid wieder für alle sperren
+        dashboardGrid.setStatic(true); 
+        document.getElementById('dashboard-grid').classList.remove('edit-mode');
+    }
 }
 
 async function loadTariffs() {
@@ -579,8 +591,12 @@ async function updateROI() {
            roiCard.classList.remove('roi-complete');
            badgeContainer.innerHTML = '';
        }
-       updateROIForecast();
-   } catch (e) {
+       if (typeof updateROIForecast === "function") {
+            updateROIForecast();
+        } else {
+            console.log("updateROIForecast ist noch nicht implementiert.");
+        }
+    } catch (e) {
        console.error("ROI Fehler", e);
    }
 
@@ -716,7 +732,11 @@ document.getElementById("heatmapYearSelect")
 
 document.addEventListener("DOMContentLoaded", initHeatmapYears);
 
+let heatmapInitialized = false;
+
 async function initHourlyHeatmap() {
+    if (heatmapInitialized) return;
+    heatmapInitialized = true;
     const res = await fetch("/api/heatmap_hourly");
     const data = await res.json();
 
@@ -836,6 +856,16 @@ async function loadHourlyHeatmap(month) {
 // Beim Laden der Seite aufrufen
 document.addEventListener("DOMContentLoaded", initHourlyHeatmap);
 
+// =========================
+// FORECAST JS
+// =========================
+
+const appState = {
+    forecast: [],
+    activeIndex: 0,
+    chart: null
+};
+
 function prettyFeatureName(key) {
    const featureNames = {
        clouds: "Mittlerer Bewölkungsgrad",
@@ -852,186 +882,351 @@ function prettyFeatureName(key) {
    return featureNames[key] || key;
 }
 
+// 🔒 VALIDATION + ERROR UI
+
+function validateForecastData(forecast) {
+
+    if (!Array.isArray(forecast) || forecast.length === 0) {
+        return "Keine Forecast-Daten vorhanden";
+    }
+
+    for (const f of forecast) {
+
+        if (f.kwh_pred == null || isNaN(f.kwh_pred)) {
+            return "Ungültige Prognosewerte (kwh_pred fehlt)";
+        }
+
+        if (f.kwh_lower == null || f.kwh_upper == null) {
+            return "Unsicherheitsband unvollständig";
+        }
+
+        if (!f.date) {
+            return "Datum fehlt in Forecast";
+        }
+
+    }
+
+    return null;
+}
+
+function showForecastError(message) {
+
+    const canvas = document.getElementById("forecastChart");
+    const container = canvas.parentElement;
+
+    container.innerHTML = `
+        <div style="
+            padding:20px;
+            border-radius:12px;
+            background:#fee2e2;
+            color:#991b1b;
+            font-size:0.9em;
+        ">
+            ⚠️ Forecast Fehler:<br>
+            ${message}
+        </div>
+    `;
+}
+
+function validateShapData(point) {
+
+    if (!point) return "Kein Datenpunkt vorhanden";
+
+    if (!point.shap || typeof point.shap !== "object") {
+        return "SHAP-Werte fehlen";
+    }
+
+    if (Object.keys(point.shap).length === 0) {
+        return "SHAP-Daten sind leer";
+    }
+
+    if (point.kwh_pred == null) {
+        return "Prognosewert fehlt";
+    }
+
+    return null;
+}
+
+function showShapError(message) {
+    const card = document.getElementById("shapDetailCard");
+    card.style.display = "block";
+    card.innerHTML = `
+        <div style="
+            padding:20px;
+            border-radius:12px;
+            background:#fff3cd;
+            color:#856404;
+            font-size:0.9em;
+        ">
+            ⚠️ SHAP Fehler:<br>
+            ${message}
+        </div>
+    `;
+}
+
+function getTodayForecastPoint(forecastData) {
+    const todayStr = new Date().toISOString().split("T")[0];
+    return forecastData.find(d => d.date === todayStr);
+}
+
+function setActiveIndex(index) {
+    if (!appState.chart || index < 0) return;
+    appState.activeIndex = index;
+    appState.chart.setActiveElements([{
+        datasetIndex: 2,
+        index: index
+    }]);
+    appState.chart.update();
+    showShapDetails(appState.forecast[index]);
+}
+
 async function loadForecast() {
 
-   const response = await fetch("/api/forecast");
-   const data = await response.json();
-
-   console.log("Forecast API:", data);
-
-   const forecast = data.forecast || [];
-   const mae = data.mae || 0;
-
-   if (forecast.length === 0) {
-       console.warn("Keine Forecast Daten vorhanden");
-       return;
-   }
-
-   const totalKwh = forecast.reduce((sum, d) => sum + d.kwh_pred, 0);
-   const totalEur = forecast.reduce((sum, d) => sum + d.eur_pred, 0);
-
-   document.getElementById('forecast-total-kwh').innerHTML = `${totalKwh.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
-
-   document.getElementById("forecast-total-eur").innerHTML = `${totalEur.toFixed(2)}<span class="unit" style="color: var(--accent);">€</span>`;
-
-   document.getElementById("forecast-mae").innerHTML = `${mae.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
-
-
-   // =========================
-   // Forecast Chart mit Unsicherheitsband
-   // =========================
-
-   const labels = forecast.map(f => {
-       const parts = f.date.split("-");
-       return `${parts[2]}.${parts[1]}.${parts[0]}`;
-   });
-   const values = forecast.map(f => f.kwh_pred);
-
-   const lower = forecast.map(f => Number(f.kwh_lower));
-   const upper = forecast.map(f => Number(f.kwh_upper));
-
-   const ctx = document.getElementById("forecastChart");
-
-   if (window.forecastChartInstance) {
-       window.forecastChartInstance.destroy();
-   }
-
-   window.forecastChartInstance = new Chart(ctx, {
-       type: 'line',
-       data: {
-           labels: labels,
-           datasets: [
-            {
-                label: '90% Quantil',
-                data: upper,
-                borderColor: 'transparent',
-                pointRadius: 0,
-                fill: false,
-                tooltipHidden: true
-            },
-            {
-                label: 'Unsicherheitsband (80%)',
-                data: lower,
-                borderColor: 'transparent',
-                borderWidth: 0,
-                pointRadius: 0,
-                fill: '-1',
-                backgroundColor: 'rgba(239,68,68,0.18)',
-            },
-            {
+    const response = await fetch("/api/forecast");
+    const data = await response.json();
+ 
+    console.log("Forecast API:", data);
+ 
+    const forecast = data.forecast || [];
+    const mae = data.mae || 0;
+ 
+    if (forecast.length === 0) {
+        console.warn("Keine Forecast Daten vorhanden");
+        return;
+    }
+ 
+    const validationError = validateForecastData(forecast);
+ 
+     if (validationError) {
+         console.error("Forecast Validation Error:", validationError, forecast);
+         showForecastError(validationError);
+         return;
+     }
+ 
+    appState.forecast = forecast;
+ 
+    const totalKwh = forecast.reduce((sum, d) => sum + d.kwh_pred, 0);
+    const totalEur = forecast.reduce((sum, d) => sum + d.eur_pred, 0);
+ 
+    document.getElementById('forecast-total-kwh').innerHTML = `${totalKwh.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
+    document.getElementById("forecast-total-eur").innerHTML = `${totalEur.toFixed(2)}<span class="unit" style="color: var(--accent);">€</span>`;
+    document.getElementById("forecast-mae").innerHTML = `${mae.toFixed(2)}<span class="unit" style="color: var(--accent);">kWh</span>`;
+ 
+    const labels = forecast.map(f => {
+        const parts = f.date.split("-");
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    });
+    const values = forecast.map(f => f.kwh_pred);
+ 
+    const lower = forecast.map(f => Number(f.kwh_lower));
+    const upper = forecast.map(f => Number(f.kwh_upper));
+ 
+    const ctx = document.getElementById("forecastChart");
+ 
+    if (window.forecastChartInstance) {
+        window.forecastChartInstance.destroy();
+    }
+ 
+    window.forecastChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+             {
+                 label: '90% Quantil',
+                 data: upper,
+                 borderColor: 'transparent',
+                 pointRadius: 0,
+                 fill: false,
+                 tooltipHidden: true
+             },
+             {
+                 label: 'Unsicherheitsband (80%)',
+                 data: lower,
+                 borderColor: 'transparent',
+                 borderWidth: 0,
+                 pointRadius: 0,
+                 fill: '-1',
+                 backgroundColor: 'rgba(239,68,68,0.18)',
+             },
+             {
                 label: 'Prognose',
                 data: values,
                 borderColor: '#ef4444',
                 backgroundColor: '#ef4444',
                 tension: 0.3,
-                pointRadius: 6,
-                pointHoverRadius: 10,
+            
+                // 🔴 STANDARD vs AKTIV
+                pointRadius: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? 8 : 6;
+                },
+            
+                pointBackgroundColor: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex
+                        ? '#ffffff'   // aktiv → weiß innen
+                        : '#ef4444';  // normal → rot
+                },
+            
+                pointBorderColor: '#ef4444',
+            
+                pointBorderWidth: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? 3 : 0;
+                },
+            
                 hitRadius: 20,
+            
+                // 🟡 HOVER LOGIK (WICHTIG!)
+                pointHoverRadius: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex ? 8 : 10;
+                },
+            
+                pointHoverBackgroundColor: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex
+                        ? '#ffffff'   // aktiv → KEINE Änderung
+                        : '#ef4444';  // normal → bleibt rot
+                },
+            
+                pointHoverBorderColor: '#ef4444',
+            
+                pointHoverBorderWidth: (ctx) => {
+                    return ctx.dataIndex === appState.activeIndex
+                        ? 3   // aktiv → KEINE Änderung
+                        : 0;  // normal → kein Rand beim Hover
+                },
+            
                 fill: false
-            }
-        ]
-       },
-       options: {
-           responsive: true,
-           interaction: {
-               mode: 'index',
-               intersect: false
-           },
-           plugins: {
-               legend: {
-                   display: false
-               },
-                tooltip: {
-                    enabled: false, // Standard deaktivieren
-                    external: function(context) {
-                        let tooltipEl = document.getElementById('forecast-chart-tooltip');
-
-                        if (!tooltipEl) {
-                            tooltipEl = document.createElement('div');
-                            tooltipEl.id = 'forecast-chart-tooltip';
-                            // Wir fügen deine CSS-Klasse hinzu!
-                            tooltipEl.classList.add('heatmap-tooltip');
-                            // Überschreiben einiger Werte für die Chart-Positionierung
-                            Object.assign(tooltipEl.style, {
-                                opacity: 1,
-                                pointerEvents: 'none',
-                                position: 'absolute',
-                                transition: 'opacity 0.15s ease',
-                                bottom: 'auto', // Reset von deinem CSS
-                                left: '0px',
-                                top: '0px',
-                                transform: 'translate(-50%, -110%)', // Zentriert über dem Punkt
-                                whiteSpace: 'nowrap',
-                                zIndex: '100'
-                            });
-                            document.body.appendChild(tooltipEl);
-                        }
-
-                        const tooltipModel = context.tooltip;
-                        if (tooltipModel.opacity === 0) {
-                            tooltipEl.style.opacity = 0;
-                            return;
-                        }
-
-                        if (tooltipModel.body) {
-                            const index = tooltipModel.dataPoints[0].dataIndex;
-                            const f = forecast[index];
-                            
-                            tooltipEl.innerHTML = `
-                                <div style="font-weight:700; margin-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.08); padding-bottom:4px; color: var(--text-dark);">
-                                    ${labels[index]}
-                                </div>
-                                
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-weight:600;">
-                                    <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block; color: #ef4444;"></span>
-                                    Prognose: ${f.kwh_pred.toFixed(3)} kWh
-                                </div>
-
-                                <div style="font-size: 0.9em; color: var(--text-dark); display: flex; flex-direction: column; gap: 2px; padding-left: 16px;">
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span style="width: 6px; height: 2px; background: #ccc; display: inline-block;"></span>
-                                        <span>Max (90% Quantil): <strong>${Number(f.kwh_upper).toFixed(2)} kWh</strong></span>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span style="width: 6px; height: 2px; background: #ccc; display: inline-block;"></span>
-                                        <span>Min (10% Quantil): <strong>${Number(f.kwh_lower).toFixed(2)} kWh</strong></span>
-                                    </div>
-                                </div>
-
-                                <div style="font-size: 0.75em; color: #999; font-style: italic; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #eee;">
-                                    80% Wahrscheinlichkeits-Intervall
-                                </div>
-                            `;
-                          }
-
-                        const position = context.chart.canvas.getBoundingClientRect();
-                        tooltipEl.style.opacity = 1;
-                        tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
-                        tooltipEl.style.top = position.top + window.pageYOffset + tooltipModel.caretY + 'px';
-                    }
+            },
+         ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                 tooltip: {
+                     enabled: false,
+                     external: function(context) {
+                         let tooltipEl = document.getElementById('forecast-chart-tooltip');
+ 
+                         if (!tooltipEl) {
+                             tooltipEl = document.createElement('div');
+                             tooltipEl.id = 'forecast-chart-tooltip';
+                             tooltipEl.classList.add('heatmap-tooltip');
+                             Object.assign(tooltipEl.style, {
+                                 opacity: 1,
+                                 pointerEvents: 'none',
+                                 position: 'absolute',
+                                 transition: 'opacity 0.15s ease',
+                                 bottom: 'auto',
+                                 left: '0px',
+                                 top: '0px',
+                                 transform: 'translate(-50%, -110%)',
+                                 whiteSpace: 'nowrap',
+                                 zIndex: '100'
+                             });
+                             document.body.appendChild(tooltipEl);
+                         }
+ 
+                         const tooltipModel = context.tooltip;
+                         if (tooltipModel.opacity === 0) {
+                             tooltipEl.style.opacity = 0;
+                             return;
+                         }
+ 
+                         if (tooltipModel.body) {
+                             const index = tooltipModel.dataPoints[0].dataIndex;
+                             const f = forecast[index];
+                             
+                             tooltipEl.innerHTML = `
+                                 <div style="font-weight:700; margin-bottom:6px; border-bottom:1px solid rgba(0,0,0,0.08); padding-bottom:4px; color: var(--text-dark);">
+                                     ${labels[index]}
+                                 </div>
+                                 
+                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-weight:600;">
+                                     <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block; color: #ef4444;"></span>
+                                     Prognose: ${f.kwh_pred.toFixed(3)} kWh
+                                 </div>
+ 
+                                 <div style="font-size: 0.9em; color: var(--text-dark); display: flex; flex-direction: column; gap: 2px; padding-left: 16px;">
+                                     <div style="display: flex; align-items: center; gap: 6px;">
+                                         <span style="width: 6px; height: 2px; background: #ccc;"></span>
+                                         <span>Max (90% Quantil): <strong>${Number(f.kwh_upper).toFixed(2)} kWh</strong></span>
+                                     </div>
+                                     <div style="display: flex; align-items: center; gap: 6px;">
+                                         <span style="width: 6px; height: 2px; background: #ccc;"></span>
+                                         <span>Min (10% Quantil): <strong>${Number(f.kwh_lower).toFixed(2)} kWh</strong></span>
+                                     </div>
+                                 </div>
+ 
+                                 <div style="font-size: 0.75em; color: #999; font-style: italic; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #eee;">
+                                     80% Wahrscheinlichkeits-Intervall
+                                 </div>
+                             `;
+                           }
+ 
+                         const position = context.chart.canvas.getBoundingClientRect();
+                         tooltipEl.style.opacity = 1;
+                         tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
+                         tooltipEl.style.top = position.top + window.pageYOffset + tooltipModel.caretY + 'px';
+                     }
+                 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
                 }
-           },
-           scales: {
-               y: {
-                   beginAtZero: true
-               }
-           },
-           onClick: (event, elements, chart) => {
-               const points = chart.getElementsAtEventForMode(
-                   event,
-                   'index', {
-                       intersect: false
-                   },
-                   true
-               );
-               if (points.length) {
-                   const index = points[0].index;
-                   showShapDetails(forecast[index]);
-               }
-           }
-       }
-   });
-}
+            },
+ 
+            onClick: (event, elements, chart) => {
+                 const points = chart.getElementsAtEventForMode(
+                     event,
+                     'index',
+                     { intersect: false },
+                     true
+                 );
+                 if (points.length) {
+                     setActiveIndex(points[0].index);
+                 }
+             },
+ 
+             onHover: (event, elements, chart) => {
+                if (elements.length) {
+                    const hoverIndex = elements[0].index;
+                    if (hoverIndex !== appState.activeIndex) {
+                        chart.setActiveElements([{
+                            datasetIndex: 2,
+                            index: hoverIndex
+                        }]);
+                        chart.update('none');
+                    }
+                } else {
+                    chart.setActiveElements([{
+                        datasetIndex: 2,
+                        index: appState.activeIndex
+                    }]);
+                    chart.update('none');
+                }
+            }
+        }
+    });
+ 
+    appState.chart = window.forecastChartInstance;
+ 
+    const todayPoint = getTodayForecastPoint(forecast) || forecast[0];
+ 
+    if (todayPoint) {
+         const todayIndex = forecast.findIndex(f => f.date === todayPoint.date);
+ 
+         document.getElementById("shapDetailCard").style.display = "block";
+ 
+         setActiveIndex(todayIndex);
+    }
+ }
 
 async function loadFeatureImportance() {
 
@@ -1059,7 +1254,7 @@ async function loadFeatureImportance() {
                    legend: {
                        display: false
                    }
-               }
+               },
            }
        });
 
@@ -1097,7 +1292,7 @@ async function loadGlobalShap() {
                    legend: {
                        display: false
                    }
-               }
+               },
            }
        });
 
@@ -1108,6 +1303,14 @@ async function loadGlobalShap() {
 
 
 function showShapDetails(point) {
+
+    const validationError = validateShapData(point);
+
+    if (validationError) {
+        console.error("SHAP Validation Error:", validationError, point);
+        showShapError(validationError);
+        return;
+    }
 
    // ===== Punkt global merken für ResizeObserver =====
    window._lastShapPoint = point;
@@ -1388,22 +1591,3 @@ function showShapDetails(point) {
 
    document.getElementById("seasonInterpretation").innerText = text;
 }
-
-
-const t = new Date().toISOString().split('T')[0];
-document.getElementById('start').value = t;
-document.getElementById('end').value = t;
-document.getElementById('start').addEventListener('change', updateQuickButtonsActiveState);
-document.getElementById('end').addEventListener('change', updateQuickButtonsActiveState);
-fetchData();
-updateWeather();
-updateLive();
-updatePeaks();
-updateQuickButtonsActiveState();
-loadForecast();
-loadGlobalShap();
-loadFeatureImportance();
-setInterval(updateLive, 5000);
-setInterval(fetchData, 60000);
-setInterval(updatePeaks, 60000);
-setInterval(checkLoadingStatus, 500);

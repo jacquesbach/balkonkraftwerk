@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, render_template
 import sqlite3
 import datetime
 import requests
+import json
 import time
 import math
 import numpy as np
@@ -1049,3 +1050,51 @@ def shap_summary():
     ]
 
     return jsonify(sorted(result, key=lambda x: x["mean_abs_shap"], reverse=True))
+
+@api_bp.route('/api/layout', methods=['GET'])
+def get_layout():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT value FROM user_settings WHERE key = 'dashboard_layout'")
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return jsonify({"layout": json.loads(row[0])}), 200
+    return jsonify({"layout": None}), 200
+
+@api_bp.route('/api/layout', methods=['POST'])
+def save_layout():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Ungültiges JSON"}), 400
+            
+        layout_json = data.get('layout')
+        password = data.get('pw')
+
+        if password != ADMIN_PASS:
+            return jsonify({"error": "Nicht autorisiert"}), 403
+
+        conn = get_db_connection()
+        c = conn.cursor()
+
+        if layout_json == "RESET":
+            c.execute("DELETE FROM user_settings WHERE key = 'dashboard_layout'")
+            print("Layout wurde zurückgesetzt.")
+        elif layout_json is not None:
+            # WICHTIG: Wir konvertieren das Objekt explizit in einen String für die DB
+            layout_string = json.dumps(layout_json)
+            c.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?, ?)", 
+                      ('dashboard_layout', layout_string))
+            print("Layout erfolgreich gespeichert.")
+        else:
+            conn.close()
+            return jsonify({"error": "Kein Layout-Inhalt empfangen"}), 400
+
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "gespeichert"}), 200
+
+    except Exception as e:
+        print(f"Server-Fehler: {str(e)}")
+        return jsonify({"error": "Interner Server Fehler", "details": str(e)}), 500

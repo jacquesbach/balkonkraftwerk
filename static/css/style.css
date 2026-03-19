@@ -158,31 +158,40 @@
       transform 0.15s ease;
   }
 
-  .main-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 20px;
-    row-gap: 25px;
-    margin-bottom: 25px;
+  .grid-stack {
+    margin-left: -20px;
+    margin-right: -20px;
+    background: transparent !important;
+    box-shadow: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
   }
 
-  /* Reihe 1 */
-  .main-grid > *:nth-child(1) { grid-column: span 1; }
-  .main-grid > *:nth-child(2) { grid-column: span 2; }
-
-  /* Reihe 2 & 3: Volle Breite */
-  .main-grid > *:nth-child(3),
-  .main-grid > *:nth-child(4) { grid-column: span 3; }
-
-  /* Reihe 4: 2fr zu 1fr */
-  .main-grid > *:nth-child(5) { grid-column: span 2; }
-  .main-grid > *:nth-child(6) { grid-column: span 1; }
-
-  /* AB Reihe 5 (Element 7 und alle folgenden): Volle Breite */
-  .main-grid > *:nth-child(n + 7) { 
-    grid-column: span 3; 
+  .grid-stack-item-content {
+    xoverflow-x: hidden;
+    xoverflow-y: auto;
+    overflow: visible !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  
+  .edit-mode .grid-stack-item-content {
+    cursor: grab;
+    border: 1px dashed var(--accent);
+  }
+  
+  .edit-mode .grid-stack-item-content:active {
+    cursor: grabbing;
   }
 
+  :where(.card, .chart-card) + :where(.card, .chart-card) {
+    margin-top: 0;
+  }
+  
+  .chart-card {
+    height: 100%; /* Ersetzt die starren 400px */
+  }
+  
   .card {
     background: var(--card-bg);
     border-radius: 24px;
@@ -190,7 +199,7 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: start;
   }
 
   .card-gradient {
@@ -295,10 +304,6 @@
     margin-top: 25px;
   }
   
-  .main-grid > :where(.card, .chart-card) {
-    margin-top: 0;
-  }
-
   .card-peak {
     background: linear-gradient(135deg, #4b79ff 0%, #6dd5fa 100%);
     box-shadow: 0 15px 35px rgba(75, 121, 255, 0.25);
@@ -384,13 +389,6 @@
   }
 
   @media (max-width: 900px) {
-    .main-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .main-grid > * {
-      grid-column: span 1 !important;
-    }
 
     .top-controls {
       flex-direction: column;
