@@ -40,15 +40,16 @@ async function unlockAdmin() {
         
         document.getElementById('unlockBtn').style.display = 'none';
         document.getElementById('adminArea').style.display = 'flex';
-        
-        injectDeleteButtons();
-        toggleDeleteButtons(true);
-        
+
         if (dashboardGrid) {
-            // Grid bearbeitbar machen
             dashboardGrid.setStatic(false); 
             document.getElementById('dashboard-grid').classList.add('edit-mode');
         }
+        
+        setTimeout(() => {
+            injectDeleteButtons();
+            toggleDeleteButtons(true);
+        }, 100);
 
         loadTariffs();
         updateAdminCardList();

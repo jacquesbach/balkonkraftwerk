@@ -20,7 +20,11 @@ function initGridstack() {
 function injectDeleteButtons() {
     document.querySelectorAll('.grid-stack-item').forEach(item => {
 
-        // schon vorhanden? -> skip
+        if (!item.id) {
+            console.warn("Grid Item ohne ID:", item);
+            return;
+        }
+
         if (item.querySelector('.card-delete-btn')) return;
 
         const btn = document.createElement('div');
@@ -226,6 +230,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     initGridstack();
     await loadLayout(); // Wartet, bis Boxen aus DB oder LocalStorage da sind
     await loadRemovedCards();
+    injectDeleteButtons();
 
     // --- PHASE 2: Startwerte für Datumsfelder setzen ---
     const t = new Date().toISOString().split('T')[0];
