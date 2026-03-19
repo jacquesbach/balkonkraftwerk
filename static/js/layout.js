@@ -17,37 +17,6 @@ function initGridstack() {
     });
 }
 
-function injectDeleteButtons() {
-    document.querySelectorAll('.grid-stack-item').forEach(item => {
-
-        if (!item.id || !ALL_CARDS.includes(item.id)) return;
-
-        if (item.querySelector('.card-delete-btn')) return;
-
-        const btn = document.createElement('div');
-        btn.className = 'card-delete-btn';
-        btn.innerHTML = '🗑️';
-
-        Object.assign(btn.style, {
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            opacity: '0.7',
-            display: currentPw ? 'block' : 'none',
-            zIndex: 20
-        });
-
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            removeCard(item.id);
-        };
-        
-        item.appendChild(btn);
-    });
-}
-
 // 2. Layout speichern (Nur in DB und nur wenn PW da ist)
 async function saveLayout() {
     if (!dashboardGrid || !currentPw || currentPw === "") {
@@ -116,118 +85,10 @@ async function resetDatabaseLayout() {
     }
 }
 
-let removedCards = [];
-
-function removeCard(cardId) {
-    if (!currentPw) return;
-
-    const el = document.getElementById(cardId);
-    if (!el) return;
-
-    el.style.display = 'none';
-
-    if (!removedCards.includes(cardId)) {
-        removedCards.push(cardId);
-    }
-
-    saveRemovedCards();
-    updateAdminCardList();
-}
-
-function restoreCard(cardId) {
-    const el = document.getElementById(cardId);
-    if (!el) return;
-
-    el.style.display = '';
-
-    removedCards = removedCards.filter(id => id !== cardId);
-
-    saveRemovedCards();
-    updateAdminCardList();
-}
-
-async function loadRemovedCards() {
-    const res = await fetch('/api/cards');
-    const data = await res.json();
-
-    removedCards = data.removed || [];
-
-    removedCards.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-    });
-
-    updateAdminCardList();
-}
-
-async function saveRemovedCards() {
-    if (!currentPw) return;
-
-    await fetch('/api/cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            removed: removedCards,
-            pw: currentPw
-        })
-    });
-}
-
-const ALL_CARDS = [
-    "card-total",
-    "card-live",
-    "card-main-chart",
-    "card-panel-chart",
-    "card-hourly-heatmap",
-    "card-donut-chart",
-    "card-records",
-    "card-roi",
-    "card-yearly-heatmap",
-    "card-forecast",
-    "card-shap-details",
-    "card-global-shap",
-    "card-feature-importance"
-];
-
-function updateAdminCardList() {
-    const container = document.getElementById('cardManagerList');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    ALL_CARDS.forEach(id => {
-        const isRemoved = removedCards.includes(id);
-
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.justifyContent = 'space-between';
-        row.style.marginBottom = '6px';
-
-        row.innerHTML = `
-            <span>${id}</span>
-            <button onclick="${isRemoved 
-                ? `restoreCard('${id}')` 
-                : `removeCard('${id}')`}">
-                ${isRemoved ? '➕' : '🗑️'}
-            </button>
-        `;
-
-        container.appendChild(row);
-    });
-}
-
-function toggleDeleteButtons(show) {
-    document.querySelectorAll('.card-delete-btn').forEach(btn => {
-        btn.style.display = show ? 'block' : 'none';
-    });
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
     // --- PHASE 1: Das Gerüst aufbauen ---
     initGridstack();
     await loadLayout(); // Wartet, bis Boxen aus DB oder LocalStorage da sind
-    await loadRemovedCards();
-    injectDeleteButtons();
 
     // --- PHASE 2: Startwerte für Datumsfelder setzen ---
     const t = new Date().toISOString().split('T')[0];
