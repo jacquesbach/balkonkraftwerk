@@ -20,10 +20,7 @@ function initGridstack() {
 function injectDeleteButtons() {
     document.querySelectorAll('.grid-stack-item').forEach(item => {
 
-        if (!item.id) {
-            console.warn("Grid Item ohne ID:", item);
-            return;
-        }
+        if (!item.id || !ALL_CARDS.includes(item.id)) return;
 
         if (item.querySelector('.card-delete-btn')) return;
 
@@ -46,7 +43,7 @@ function injectDeleteButtons() {
             e.stopPropagation();
             removeCard(item.id);
         };
-
+        
         item.appendChild(btn);
     });
 }
